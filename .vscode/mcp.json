@@ -1,0 +1,18 @@
+{
+  "inputs": [
+    { "id": "github_pat", "type": "promptString", "description": "GitHub Personal Access Token", "password": true }
+  ],
+   "servers": {
+    "playwright": { "type": "stdio", "command": "npx", "args": ["@playwright/mcp@latest"] },
+    "playwright-test": { "type": "stdio", "command": "npx", "args": ["playwright", "run-test-mcp-server"] },
+    "github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers": { "Authorization": "${env:GITHUB_PERSONAL_TOKEN}" }
+    },
+     "temp-mail-mcp-server": {
+        "command": "npx",
+        "args": ["@pragyanm/temp-mail-mcp-server@latest"],
+    }
+  }
+}
