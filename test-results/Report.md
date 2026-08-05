@@ -129,12 +129,13 @@ Per `user-stories/SCRUM.md`'s Technical Notes ("Test across Chrome, Firefox, and
 **DEFECT-1 (Severity: High) — Protected routes silently render a broken shell instead of redirecting to login, after logout.**
 After logging out, navigating directly to `/en/customer/dashboard` does not redirect to `/login` or `/en/auth` as expected. The page renders a degraded dashboard shell ("Hello,", "No stats available", "No bookings found") while the browser console logs repeated `TRPCClientError: Authentication token not found in cookies` errors that are never surfaced to the user — violating both the Authentication and Error Handling acceptance criteria ("no silent failure or broken page").
 **Root-cause hint (from exploratory testing):** after logout, a stale `user` cookie (containing a seemingly-valid but stale session identifier) survives, while the real auth-token cookie used by data-fetching is cleared. The route guard/shell appears to key off the mere *presence* of the `user` cookie rather than validating the real session.
-**Coverage:** `authentication.spec.ts` › "KNOWN DEFECT: protected route after logout..." and `error-handling.spec.ts` › "DEFECT: protected route after logout..." — both reproduce this 100% of the time across every run this cycle.
+**Coverage:** `tests/rural-lodge-test/authentication/006_protected-route-after-logout-defect.spec.ts` and `tests/rural-lodge-test/error-handling/002_protected-route-silent-failure-defect.spec.ts` — both reproduce this 100% of the time across every run this cycle.
 **Recommendation:** route guards should validate actual auth-token presence/validity, not the `user` info cookie; logout should clear all auth-related cookies, not just the primary token.
+**Full step-by-step repro with screenshots:** see [`specs/defects/DEFECT-1-protected-route-after-logout.md`](../specs/defects/DEFECT-1-protected-route-after-logout.md).
 
 **DEFECT-2 (Severity: Medium) — Wishlist "Remove" toggle on the lodge-detail page does not persist server-side.**
 Clicking the Save/Remove toggle a second time (while it reads "Remove") flips its own label back to "Save" — looking like a successful removal — but the item is still present when the Wishlist page is reloaded. The "add" path persists correctly; only the "remove" path on this specific control is affected. The dedicated Wishlist-page removal button + confirmation dialog works correctly and is the reliable removal path.
-**Coverage:** `customer-booking.spec.ts` › "Wishlist: the lodge-detail Save/Remove toggle should persist removal (KNOWN DEFECT, fails until fixed)" — reproduces 100% of the time.
+**Coverage:** `tests/rural-lodge-test/customer-booking/006_wishlist-remove-toggle-defect.spec.ts` — reproduces 100% of the time.
 **Recommendation:** the lodge-detail toggle's "remove" path needs to actually await/persist its mutation rather than only updating local/optimistic UI state.
 
 ### Documented gaps / minor findings (not blocking, not asserted as failures)
