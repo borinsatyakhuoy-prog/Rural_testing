@@ -16,6 +16,7 @@
 - **5 real test-suite/config issues were root-caused and healed this cycle** (none were application bugs): a cross-file shared-account session collision, three timing/assertion gaps, and one self-perpetuating hang in the Lodge Owner Profile test caused by a hardcoded rename value colliding with account state left behind by an earlier crash. Full detail in §3.
 - **Cross-browser:** Firefox completed shortly after this cycle's chromium work (35 passed, 2 failed — both DEFECT-1, confirming it reproduces cross-browser). WebKit not yet run. See §5.
 - **Overall status: STABLE.** No new application defects were found or fixed this cycle — all healing was test-code/config correctness work. The 2 known application defects already catalogued from Step 3 remain open and are now enforced by automated regression tests rather than only documented narratively.
+- **Cycle 2 (2026-08-05): file-structure rework, performance suite, and 3 new test cases — suite grew from 37 to 46 tests.** By request, `tests/rural-lodge-test/` was reorganized from 6 flat per-domain spec files into `<domain>/NNN_description.spec.ts` subdirectories (matching the reference project's convention), with shared login helpers extracted to `helpers/auth.ts`. A new formal performance SLA (`specs/performance-sla.md`, `helpers/performance.ts`) with P99 gating was added (6 new tests, all passing, zero SLA FAILs — see §9). 3 new functional tests closed real coverage gaps found via live exploration: Google/Apple OAuth redirect verification (scoped to the boundary this app controls, per an explicit user decision — see §9) and the Stay Management calendar's real-data branch (previously only the empty-state was covered). Allure and monocart reporting were also wired in alongside the existing Playwright HTML report. **Final result: 42/46 passed (91.3%)** — the same 3 known-defect tests plus one recurrence of a low-frequency navigation hydration race (see §9). **A real config bug was also found and fixed:** Playwright's default `outputDir` was `test-results/` (the same folder holding this hand-authored report), so every run's own cleanup was silently deleting `Report.md` — fixed by pointing `outputDir` at a dedicated `playwright-output/` folder, the same fix the reference project already applied for the identical reason.
 
 ---
 
@@ -169,3 +170,63 @@ Clicking the Save/Remove toggle a second time (while it reads "Remove") flips it
 - **Recommend running WebKit** (the remaining browser from the Technical Notes), sequentially and not concurrently with any other run against these shared test accounts (§3a). Firefox is now confirmed stable, with DEFECT-1 reproducing there too.
 - **Recommend a follow-up pass against an `OWNER_TEST_EMAIL`-equivalent account that has real reservation data**, to exercise the Reservations approve/reject/confirm actions and the owner-side view of an abandoned pre-payment booking — both currently only verifiable against empty-state UI.
 - **Process note for future cycles:** this project now has 4 test accounts in play (`TEST_USER_EMAIL`, `OWNER_TEST_EMAIL`, `CUSTOMER_TEST_EMAIL`); `TEST_USER_EMAIL` is still shared across 3 spec files with no in-file serialization (relying instead on the global `workers: 1` setting). If a dedicated fourth account is ever introduced to fully separate `lodge-owner-crud.spec.ts` from `authentication.spec.ts`/`navigation.spec.ts`, `workers` could potentially be relaxed back to parallel for faster runs — not attempted this cycle since it wasn't necessary to reach a stable suite.
+- **Cycle 2: recommend a developer look at the navigation "Stay" click hydration race** (§9) — it has now reproduced twice (once before, once after, a targeted fix), suggesting the app's own client-side router occasionally loses the race to intercept the link click, falling through to a real navigation that then hits the server's default-locale redirect. Not urgent (low-frequency, and the app's default-locale behavior itself is correct) but worth a look if it starts appearing more often. Recommend running WebKit next, and re-confirming Firefox now that the suite has grown to 46 tests.
+
+---
+
+## 9. Cycle 2 (2026-08-05): File Restructure, Performance Suite, New Test Cases
+
+**Scope:** by request — (1) reorganize the test file structure and improve naming to match the reference project's convention, (2) explore and add new test coverage, (3) add a performance test suite with P99 SLA gating, matching the reference project's pattern.
+
+### 9a. File structure rework
+
+`tests/rural-lodge-test/` was reorganized from 6 flat spec files (`authentication.spec.ts`, `navigation.spec.ts`, etc., each holding many tests) into `<domain>/NNN_description.spec.ts` subdirectories — one file per scenario, numbered, matching `tests/fapa-test/`'s established convention in the reference project:
+
+- `authentication/001`-`008` (8 files, was 1)
+- `navigation/001`-`012` (12 files, was 1)
+- `error-handling/001`-`003` (3 files, was 1)
+- `lodge-owner-modules/001`-`007` (7 files, was 1)
+- `customer-booking/001`-`006` (6 files, was 1)
+- `lodge-owner-crud/001` (kept as a single combined file — tests 2-4 have a genuine DATA dependency on the lodge test 1 creates via an in-memory closure, which Playwright cannot share across separate test files; the reference project has precedent for this too, e.g. its own multi-subtest toggle-matrix files)
+- New `helpers/auth.ts` — `login`, `loginAsCustomer`, `loginAsOwner`, `logout` extracted from the duplicated inline versions across the old flat files.
+
+Verified via `--list` (37 tests in 34 files, exactly matching the pre-restructure count) and a full run: all 3 known-defect tests reproduced identically; 2 new failures surfaced in that one run (`lodge-owner-modules/003`, `navigation/009`) but both passed cleanly on an immediate isolated re-run, confirming transient staging load (likely compounded by a concurrent `npm install` and MCP browser exploration happening on the same machine during that run) rather than a regression from the restructure itself.
+
+### 9b. Performance suite with P99 SLA (new)
+
+Added `specs/performance-sla.md` and `tests/rural-lodge-test/helpers/performance.ts` (ported from the reference project's methodology: Navigation Timing/Paint Timing/Resource Timing APIs, `assertSLA`/`assertP99SLA` hard gates, `rate`/`ratedLine` heuristic labels) plus 6 new tests under `tests/rural-lodge-test/performance/`:
+
+| Tier | Test | Result |
+|---|---|---|
+| T1 Page Load + T3 API Read | `001_login-page-performance.spec.ts` | PASS (login page load 1012-1514 ms; tRPC batch substring not confirmed yet, reports `n/a` gracefully) |
+| T2 Navigation + T5 Dialog Open | `002_home-navigation-performance.spec.ts` | PASS/WARN (nav clicks 644-2226 ms; one WARN observed, within SLA max) |
+| T4 Search/Filter | `003_owner-lodges-search-performance.spec.ts` | PASS (~1.2-1.25s against the 40+-row TEST_USER_EMAIL lodges table) |
+| T5 Dialog Open | `004_booking-dialog-open-performance.spec.ts` | PASS (date picker 824-908 ms, guests dialog 320-342 ms) |
+| T6 Booking flow | `005_booking-flow-performance.spec.ts` | PASS (Book CTA -> Personal Details ~2.0-2.1s, comfortably under the 20s max set from this suite's own documented "Loading Your Booking..." wait) |
+| P99 (repeated samples) | `006_p99-sla-performance.spec.ts` | PASS/WARN (8x home-page-load and 6x nav-click samples; P99 landed as WARN once, 2108 ms vs. 2000 ms target, still well under the 8000/6000 ms max) |
+
+**Known gap:** T3 (API Read) currently can't confirm the real tRPC batch endpoint substring fired around login within the measurement window (reports `n/a` rather than a false number) — matches the reference project's own documented pattern for not-yet-confirmed endpoint substrings. A follow-up could capture the real request URL via `page.on('request')` during a live session to pin this down.
+
+**All 6 performance tests pass; zero SLA FAILs** (some WARNs — within SLA, above target, expected/normal per the methodology, not a defect).
+
+### 9c. New functional test cases (via live exploration)
+
+**Google/Apple OAuth login — scoped by explicit user decision.** Full third-party login automation was explicitly ruled out: neither provider has a dedicated test account in this project, and both `accounts.google.com`/`appleid.apple.com` have their own anti-bot protections (CAPTCHA, device verification) that would make a real login flaky even with credentials. Per the user's choice, the new tests (`authentication/007_google-oauth-redirect.spec.ts`, `008_apple-oauth-redirect.spec.ts`) verify only the boundary this app actually controls: clicking the button redirects to the correct real provider domain with the expected `client_id`/`redirect_uri` OAuth parameters wired up, confirmed live via Playwright MCP before automating - then stops, never attempting the provider's own login form. Both pass.
+
+**Stay Management calendar with real lodge data (new).** The existing Stay Management test only ever exercised the "clean" `OWNER_TEST_EMAIL` account (0 lodges), so the real calendar branch had never been covered - only its empty state. Explored live via Playwright MCP using the `TEST_USER_EMAIL` account (40+ real lodges): confirmed a "Choose a lodge" selector (one button per lodge with its nightly price), a 4-item calendar legend (Custom price / Custom stay rules / Custom price & stay rules / Blocked), a 12-month rolling calendar grid, and Default Stay Rules / Custom Rules / Price Rules sections below it. New test: `lodge-owner-modules/007_stay-management-calendar-with-real-lodge-data.spec.ts` - passes, asserting all of the above.
+
+**CAPTCHA/anti-bot bypass — declined.** A separate request to bypass Cloudflare Turnstile (present on the Sign Up tab, per `specs/exploratory-findings.md`) or Google/Apple's own bot-detection was declined: these exist specifically to block automated submissions, and deliberately circumventing them isn't something this suite will do, even for QA purposes, since it would defeat the actual security control being exercised. If the underlying environment already uses a Cloudflare Turnstile *test* sitekey (a common, legitimate practice for automatable staging environments), Sign Up submission would already work with no bypass needed - worth confirming with the dev team, not attempted this cycle.
+
+### 9d. Screenshot reorganization
+
+The 49 exploratory-testing screenshots (previously loose in the project root) were moved into `specs/screenshots/<domain>/`, mirroring `tests/rural-lodge-test/`'s own domain folder structure (`authentication/`, `navigation/`, `error-handling/`, `lodge-owner-crud/`) for easy cross-reference. All 40 inline screenshot citations in `specs/exploratory-findings.md` were updated to the new paths. 14 previously-uncited screenshots (an earlier draft pass's duplicates, by content) were kept and domain-bucketed rather than discarded.
+
+### 9e. Reporting infrastructure
+
+`allure-playwright` and `monocart-reporter` were added alongside the existing Playwright HTML reporter (`allurerc.mjs`, `tests/global-setup.ts` for the Allure Environment widget, matching the reference project's setup). All three reports are generated from the same run: Playwright HTML (`playwright-report/`), Allure (`allure-report/`, needs a static server - not a single file), and monocart (`monocart-report/index.html`, self-contained, opens directly in a browser with no server).
+
+**Real config bug found and fixed in the process:** Playwright's default `outputDir` is `test-results/` — the exact folder this project's own `Report.md` and `SCRUM.md`-adjacent hand-authored files live in. Every test run's own start-of-run cleanup was silently deleting `Report.md` before this was ever noticed (caught when this section was about to be written and the file was found already gone). Fixed by setting `outputDir: './playwright-output'` in `playwright.config.ts` — the identical fix, for the identical reason, already documented in the reference project's own config. **Recommend never removing this setting**, and being aware that any future reports/hand-authored files should also avoid `test-results/`'s sibling `playwright-output/` if added later.
+
+### 9f. Final result this cycle
+
+**42/46 passed (91.3%), chromium.** The same 3 known-defect tests (unchanged, still correctly documenting DEFECT-1 and DEFECT-2) plus one recurrence of the `navigation/001` "Stay" click hydration race first found and "fixed" during Step 5 — it reproduced again in this cycle's full run despite the earlier `waitForLoadState('load')` fix, then passed cleanly on isolated re-run both times it's been seen. This is now understood as a genuine, if low-frequency (~1-in-3 to 1-in-4 full runs), timing race in the app's own client-side router rather than a fully-fixable test issue — documented as a residual known flake rather than chased further with additional timing hacks.

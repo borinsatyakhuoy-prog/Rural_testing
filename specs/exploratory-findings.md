@@ -4,7 +4,7 @@
 **Environment:** https://staging-ruralloge.allweb.cloud (staging)
 **Browser viewport used:** 2000x1200 (Playwright MCP browser tools)
 **Test account:** value of `TEST_USER_EMAIL` in `.env` (password from `TEST_USER_EMAIL`/`TEST_USER_PASSWORD`, not printed here)
-**Screenshots:** saved to the project root as `01-login-page-empty.png` … `22-dashboard-authenticated.png` (paths referenced below are relative to the repo root)
+**Screenshots:** saved under `specs/screenshots/`, one subfolder per domain (`authentication/`, `navigation/`, `error-handling/`, `lodge-owner-crud/`) matching `tests/rural-lodge-test/`'s own folder structure - paths referenced below are relative to the repo root
 
 Executed against the scenarios defined in `specs/planner/01-authentication.md`, `specs/planner/02-navigation.md`,
 and `specs/planner/03-error-handling.md`.
@@ -27,50 +27,50 @@ Two additional minor findings not in the original plan were also discovered (see
 ## Authentication (`01-authentication.md`)
 
 ### 1.1 Happy path: valid login redirects to home page — **PASS**
-- Navigated to `/en/auth`: title "Login - Rural Lodge", heading "Login to your account", Email/Password empty, Continue disabled. Screenshot: `01-login-page-empty.png`.
-- Filled valid `TEST_USER_EMAIL`/`TEST_USER_PASSWORD`; Continue became enabled. Screenshot: `02-login-filled.png`.
-- Clicked Continue → navigated to `/en`, title "Welcome to Rural Lodge", header now shows "JA" user-initials button instead of the login icon. Screenshot: `03-home-authenticated.png`.
+- Navigated to `/en/auth`: title "Login - Rural Lodge", heading "Login to your account", Email/Password empty, Continue disabled. Screenshot: `specs/screenshots/authentication/01-login-page-empty.png`.
+- Filled valid `TEST_USER_EMAIL`/`TEST_USER_PASSWORD`; Continue became enabled. Screenshot: `specs/screenshots/authentication/02-login-filled.png`.
+- Clicked Continue → navigated to `/en`, title "Welcome to Rural Lodge", header now shows "JA" user-initials button instead of the login icon. Screenshot: `specs/screenshots/authentication/03-home-authenticated.png`.
 - Matches plan exactly (redirect to home, not to `/customer/dashboard`).
 
 ### 1.2 Negative: invalid credentials — **PASS**
 - On `/en/auth?returnUrl=%2F` (arrived here via the 1.9 flow below), filled `wrong.user@example.com` / `WrongPassword123!`, clicked Continue.
-- URL stayed on `/en/auth?returnUrl=%2F` (query preserved). Exact text **"Invalid email or password. Please try again."** rendered near the Password field. Both Email and Password textboxes had `[invalid]` (aria-invalid) state. Screenshot: `09-invalid-credentials-error.png`.
+- URL stayed on `/en/auth?returnUrl=%2F` (query preserved). Exact text **"Invalid email or password. Please try again."** rendered near the Password field. Both Email and Password textboxes had `[invalid]` (aria-invalid) state. Screenshot: `specs/screenshots/authentication/09-invalid-credentials-error.png`.
 
 ### 1.3 Negative: empty required fields — **PASS** (documented gap confirmed)
-- Typed a character into Email, cleared it, blurred by clicking elsewhere: Email textbox got `[invalid]` state; **no inline text message** appeared anywhere in the DOM/accessibility tree. Continue remained disabled. Screenshot: `10-empty-email-invalid.png`.
+- Typed a character into Email, cleared it, blurred by clicking elsewhere: Email textbox got `[invalid]` state; **no inline text message** appeared anywhere in the DOM/accessibility tree. Continue remained disabled. Screenshot: `specs/screenshots/authentication/10-empty-email-invalid.png`.
 - Repeated for Password: same result — `[invalid]` state only, no text, Continue still disabled.
 - Confirms the plan's documented gap: only a visual red-outline/aria-invalid state, no "Email is required"-style copy.
 
 ### 1.4 Forgot password → OTP reset panel — **PASS**
-- Clicked "Forgot password?": in-place panel replaced the form (URL unchanged). Heading "Reset password", text "Enter your email to receive an OTP.", Email field placeholder "you@example.com", helper text "We'll send a 6-digit code if the email exists.", "Send OTP" disabled, "Back to login" visible. Screenshot: `11-forgot-password-panel.png`.
+- Clicked "Forgot password?": in-place panel replaced the form (URL unchanged). Heading "Reset password", text "Enter your email to receive an OTP.", Email field placeholder "you@example.com", helper text "We'll send a 6-digit code if the email exists.", "Send OTP" disabled, "Back to login" visible. Screenshot: `specs/screenshots/authentication/11-forgot-password-panel.png`.
 - Typing an email enabled "Send OTP". Clicking "Back to login" restored the original Sign In form.
 
 ### 1.5 Password visibility toggle — **PASS**
 - Typed `Test1234!` into Password; confirmed via `document.querySelectorAll('input')` that `type="password"` by default.
-- Clicked the eye-icon button inside the password field → `type` became `"text"` (value visible). Screenshot: `12-password-visible.png`.
+- Clicked the eye-icon button inside the password field → `type` became `"text"` (value visible). Screenshot: `specs/screenshots/authentication/12-password-visible.png`.
 - Clicked again → reverted to `type="password"`.
 
 ### 1.6 Sign In / Sign Up tab switch — **PASS**
-- Clicked "Sign Up" tab: tab selection moved, and a full registration form appeared (First name, Last name, Email, Password with live strength rules, Confirm password, "Continue with Email", ToS/Privacy links). Screenshot: `13-signup-tab.png`.
-- Clicked "Sign In" tab: original login form restored. Screenshot: `14-signin-restored.png`.
+- Clicked "Sign Up" tab: tab selection moved, and a full registration form appeared (First name, Last name, Email, Password with live strength rules, Confirm password, "Continue with Email", ToS/Privacy links). Screenshot: `specs/screenshots/authentication/13-signup-tab.png`.
+- Clicked "Sign In" tab: original login form restored. Screenshot: `specs/screenshots/authentication/14-signin-restored.png`.
 - Note: switching to Sign Up triggers 2 console errors from the Cloudflare Turnstile widget (`challenges.cloudflare.com` `%c%d font-size:0` messages) — this is a benign third-party captcha-rendering artifact, not an application defect.
 
 ### 1.7 Logout requires confirmation — **PASS**
-- Logged in, clicked "JA" button → menu opened with "jak ah (Customer)", email, "My Booking", "Account Settings", "Logout". Screenshot: `04-account-menu.png`.
-- Clicked "Logout" → "Confirm Logout" dialog appeared with exact text "Are you sure you want to log out of your account?", "Cancel" and a red "Logout" button. Screenshot: `05-confirm-logout-dialog.png`.
-- Clicked the confirming "Logout" button → dialog closed, header reverted to the generic login icon, user remained on `/en` (no forced redirect). Screenshot: `06-logged-out-header.png`.
+- Logged in, clicked "JA" button → menu opened with "jak ah (Customer)", email, "My Booking", "Account Settings", "Logout". Screenshot: `specs/screenshots/authentication/04-account-menu.png`.
+- Clicked "Logout" → "Confirm Logout" dialog appeared with exact text "Are you sure you want to log out of your account?", "Cancel" and a red "Logout" button. Screenshot: `specs/screenshots/authentication/05-confirm-logout-dialog.png`.
+- Clicked the confirming "Logout" button → dialog closed, header reverted to the generic login icon, user remained on `/en` (no forced redirect). Screenshot: `specs/screenshots/authentication/06-logged-out-header.png`.
 - Minor a11y note: the confirming "Logout" button in the dialog has no distinct accessible name captured in the accessibility tree snapshot when the dialog first renders (`button [ref] [cursor=pointer]` with no name) — Playwright's `getByRole('button', {name:'Logout'})` still resolves correctly by first-match, but a screen reader could find both this button and the menu item ambiguous. Not a functional bug, noted for reference.
 
 ### 1.8 KNOWN DEFECT: protected route access while logged out does NOT redirect — **FAIL (defect CONFIRMED)**
 - After logging out, navigated directly to `https://staging-ruralloge.allweb.cloud/en/customer/dashboard`.
-- **Actual:** URL stayed at `/en/customer/dashboard` (no redirect to `/login` or `/en/auth`). Page title was "Dashboard". The sidebar and shell rendered normally, but the content area showed **"Hello,"** (no name), **"No stats available"**, and the "Recent bookings" panel showed **"No bookings found" / "Please click the link below to explore lodge."** Screenshot: `07-protected-route-defect.png`.
+- **Actual:** URL stayed at `/en/customer/dashboard` (no redirect to `/login` or `/en/auth`). Page title was "Dashboard". The sidebar and shell rendered normally, but the content area showed **"Hello,"** (no name), **"No stats available"**, and the "Recent bookings" panel showed **"No bookings found" / "Please click the link below to explore lodge."** Screenshot: `specs/screenshots/authentication/07-protected-route-defect.png`.
 - **Console:** 7 errors appeared, all `TRPCClientError: Authentication token not found in cookies`, for queries `notifications.getMy` (x2), `notifications.getUnreadCount` (x2), and `booking.getBookings` (x3).
 - **Expected (per AC1):** redirect to `/login` or localized `/en/auth`.
 - This is a genuine, reproducible defect — confirmed exactly as described in the plan.
 - **Root-cause hint found during this session (new finding, not in original plan):** after logout, `document.cookie` still contained a `user=...` cookie with a seemingly-valid session JWT (`st` field, with `exp`/`iat` claims that had not yet expired), even though the actual auth-token cookie used by the tRPC calls was gone. This suggests logout clears the primary auth cookie but leaves a stale client-side "user" info cookie behind, and the dashboard route guard/shell appears to key off the stale `user` cookie's mere presence (rendering the shell) rather than validating the real session — while the data-fetching layer correctly detects no valid token and fails. Worth flagging to developers as a likely root cause to investigate (route guard should check real auth state, not just cookie presence).
 
 ### 1.9 'Manage Your Lodge' correctly redirects unauthenticated user — **PASS**
-- Logged out, on `/en`, clicked "Manage Your Lodge" → redirected to `/en/auth?returnUrl=%2F` (title "Login - Rural Lodge"). Screenshot: `08-manage-lodge-redirect.png`.
+- Logged out, on `/en`, clicked "Manage Your Lodge" → redirected to `/en/auth?returnUrl=%2F` (title "Login - Rural Lodge"). Screenshot: `specs/screenshots/authentication/08-manage-lodge-redirect.png`.
 - Confirms auth-gating is correctly implemented for this entry point, in contrast to the dashboard route.
 
 ---
@@ -82,28 +82,28 @@ Two additional minor findings not in the original plan were also discovered (see
 
 ### 1.2 Top nav reaches Offers — **PASS**
 - Clicked "Offers" from `/en` → URL `/en/offers`, title "Offers".
-- **New finding (not in original plan):** the Offers page body only shows a generic "Coming Soon" placeholder whose copy reads **"We are working hard to bring you exciting activities. Stay tuned!"** — this text says "activities", which is copy-pasted from the Activity page and is contextually wrong for the Offers page. Screenshot: `15-offers-page.png`. Minor content bug, not a functional blocker.
+- **New finding (not in original plan):** the Offers page body only shows a generic "Coming Soon" placeholder whose copy reads **"We are working hard to bring you exciting activities. Stay tuned!"** — this text says "activities", which is copy-pasted from the Activity page and is contextually wrong for the Offers page. Screenshot: `specs/screenshots/navigation/15-offers-page.png`. Minor content bug, not a functional blocker.
 
 ### 1.3 Top nav reaches Activity — **PASS**
-- Clicked "Activity" → URL `/en/activity`, title "Activities", same "Coming Soon" / "...exciting activities..." placeholder (correct wording for this page). Screenshot: `16-activity-page.png`.
+- Clicked "Activity" → URL `/en/activity`, title "Activities", same "Coming Soon" / "...exciting activities..." placeholder (correct wording for this page). Screenshot: `specs/screenshots/navigation/16-activity-page.png`.
 
 ### 1.4 Language toggle → English — **PASS**
-- From `/km` (with cookies cleared first), opened language selector (heading "ជ្រើសរើសភាសា", English/French/Khmer options with radios, Khmer checked). Screenshot: `18-language-selector-open.png`.
+- From `/km` (with cookies cleared first), opened language selector (heading "ជ្រើសរើសភាសា", English/French/Khmer options with radios, Khmer checked). Screenshot: `specs/screenshots/navigation/18-language-selector-open.png`.
 - Clicked "English English" → URL became `/en`, nav labels "Stay"/"Offers"/"Activity", hero "Where do you want to go next?".
 
 ### 1.5 Language toggle → French — **PASS**
-- From `/en`, opened selector, clicked "French Français" → URL `/fr`. Nav became "Séjour"/"Offres"/"Activité", hero "Où voulez-vous aller ensuite ?", "Manage Your Lodge" button became "Gérer votre Lodge". Screenshot: `19-french-locale.png`.
+- From `/en`, opened selector, clicked "French Français" → URL `/fr`. Nav became "Séjour"/"Offres"/"Activité", hero "Où voulez-vous aller ensuite ?", "Manage Your Lodge" button became "Gérer votre Lodge". Screenshot: `specs/screenshots/navigation/19-french-locale.png`.
 
 ### 1.6 Language toggle → Khmer — **PASS**
 - From `/fr`, opened selector, clicked "Khmer ខ្មែរ" → URL `/km`, nav reverted to Khmer script.
 
 ### 1.7 Language toggle on login page — **PASS**
-- On `/en/auth`, a language icon button ("EN") is visible top-left of the auth panel. Screenshot: `20-auth-page-language-icon.png`.
-- Selected "Khmer ខ្មែរ" from the "Select Language" popover → URL became `/km/auth`, heading became "ចូលប្រើគណនីរបស់អ្នក", fields "អ៊ីមែល" / "ពាក្យសម្ងាត់". Screenshot: `21-km-auth-page.png`.
+- On `/en/auth`, a language icon button ("EN") is visible top-left of the auth panel. Screenshot: `specs/screenshots/navigation/20-auth-page-language-icon.png`.
+- Selected "Khmer ខ្មែរ" from the "Select Language" popover → URL became `/km/auth`, heading became "ចូលប្រើគណនីរបស់អ្នក", fields "អ៊ីមែល" / "ពាក្យសម្ងាត់". Screenshot: `specs/screenshots/navigation/21-km-auth-page.png`.
 - Reopening the panel showed the Khmer radio option checked.
 
 ### 1.8 Root URL defaults to Khmer locale — **PASS, with an important nuance (new finding)**
-- With cookies/localStorage fully cleared, navigating to `https://staging-ruralloge.allweb.cloud/` redirected to `/km` as expected. Screenshot: `17-km-home-default.png`.
+- With cookies/localStorage fully cleared, navigating to `https://staging-ruralloge.allweb.cloud/` redirected to `/km` as expected. Screenshot: `specs/screenshots/navigation/17-km-home-default.png`.
 - **However:** on a *second* visit to `/` within the same browser session (cookies NOT cleared), the root redirected to `/en` instead of `/km` — because a **`NEXT_LOCALE=en`** cookie had been set by the earlier language-toggle interaction and persists across visits. This refines (does not contradict) the plan's note that "locale is carried via the URL path, not a persisted cookie/session" — in practice there IS a `NEXT_LOCALE` cookie, and it does override the `/km` default on subsequent bare `/` visits. **Automation implication:** tests asserting the `/km` default must use a fresh/cleared browser context (no `NEXT_LOCALE` cookie), otherwise the test will flake depending on prior test order.
 
 ### 1.9 Header consistency across Stay/Offers/Activity — **PASS**
@@ -120,12 +120,12 @@ Two additional minor findings not in the original plan were also discovered (see
 - Same evidence as Authentication 1.3. No "required"/"Email is required" text found anywhere near the field; only the aria-invalid/red-outline state.
 
 ### 1.3 DEFECT: protected route silent failure — **FAIL (defect CONFIRMED)**
-- Identical reproduction to Authentication 1.8: no visible error/toast/banner is shown to the user; the dashboard renders "Hello,", "No stats available", "No bookings found" with a fully-styled shell that looks like it worked; only the browser console (7 `TRPCClientError: Authentication token not found in cookies` errors across `notifications.getMy`, `notifications.getUnreadCount`, `booking.getBookings`) reveals that anything failed. This directly violates the "no silent failure or broken page" AC. Screenshot: `07-protected-route-defect.png`.
+- Identical reproduction to Authentication 1.8: no visible error/toast/banner is shown to the user; the dashboard renders "Hello,", "No stats available", "No bookings found" with a fully-styled shell that looks like it worked; only the browser console (7 `TRPCClientError: Authentication token not found in cookies` errors across `notifications.getMy`, `notifications.getUnreadCount`, `booking.getBookings`) reveals that anything failed. This directly violates the "no silent failure or broken page" AC. Screenshot: `specs/screenshots/authentication/07-protected-route-defect.png`.
 
 ### 1.4 No-data states show clear, specific messaging — **PASS**
 - Logged in properly with the test account and navigated to `/en/customer/dashboard`.
-- Since this account has real bookings, the dashboard showed real data: "Hello, ah jak", Total Bookings: 16, a "Recent bookings" list with 3 real booking cards (Mekong Serenity Stay x2, EN_Lodge_jpYPFR) each showing status ("Pending"/"Rejected"), dates, and price. Screenshot: `22-dashboard-authenticated.png`.
-- This confirms the "has data" branch renders correctly. The "zero bookings" empty-state copy ("No bookings found" / "Please click the link below to explore lodge." / "Explore Lodge" button) was directly observed earlier in the (logged-out/broken) dashboard shell (`07-protected-route-defect.png`) and is visually well-formed and specific — it is a good, compliant no-data message *when reached in a properly-authenticated empty-account context*; the defect is specifically that this same UI is wrongly shown to a logged-out user instead of a login redirect.
+- Since this account has real bookings, the dashboard showed real data: "Hello, ah jak", Total Bookings: 16, a "Recent bookings" list with 3 real booking cards (Mekong Serenity Stay x2, EN_Lodge_jpYPFR) each showing status ("Pending"/"Rejected"), dates, and price. Screenshot: `specs/screenshots/error-handling/22-dashboard-authenticated.png`.
+- This confirms the "has data" branch renders correctly. The "zero bookings" empty-state copy ("No bookings found" / "Please click the link below to explore lodge." / "Explore Lodge" button) was directly observed earlier in the (logged-out/broken) dashboard shell (`specs/screenshots/authentication/07-protected-route-defect.png`) and is visually well-formed and specific — it is a good, compliant no-data message *when reached in a properly-authenticated empty-account context*; the defect is specifically that this same UI is wrongly shown to a logged-out user instead of a login redirect.
 
 ---
 
@@ -205,18 +205,18 @@ All obtained via Playwright's accessibility-tree role/name locators (the MCP too
   Lodge Owner dashboard with sidebar Dashboard/Lodges/Reservations/Payout/Profile/Stay Management),
   not a modal as the reference script's naming implies — but the dashboard's own `New Lodge`
   button is in the same position the script expects, so `page.getByRole('button', {name:'New
-  Lodge'}).first().click()` still works unchanged. Screenshots: `01-home-authenticated.png`,
-  `02-lodge-owner-dashboard.png`.
+  Lodge'}).first().click()` still works unchanged. Screenshots: `specs/screenshots/lodge-owner-crud/01-home-authenticated.png`,
+  `specs/screenshots/lodge-owner-crud/02-lodge-owner-dashboard.png`.
 - Clicked `New Lodge` -> navigated to `/en/lodges/new` (title "Create Lodge"). The language-step
   heading rendered in **French** ("Quelle langue souhaitez-vous utiliser ?") despite the site being
-  on `/en` — selected `English`, clicked `Next`. Screenshot: `03-create-lodge-language-select.png`.
+  on `/en` — selected `English`, clicked `Next`. Screenshot: `specs/screenshots/lodge-owner-crud/03-create-lodge-language-select.png`.
 - Selected lodge type `Entire Place`, clicked `Next` (URL `?step=2` then `?step=3`).
 - On the combined "Loge Information" step (name/description/category/arrangement/recommendations/
   activities are all ONE page, matching the reference script's step grouping even though it's
   written as two separate `test.step()` blocks): filled Name `QA_Explore_Lodge_0804`, filled a rich
   text Description, selected Category "Beachfront Villa", Place Arrangement "One Bedroom",
   recommendation "Couples", activity "Hiking". `Next` was disabled until Name/Category/Arrangement
-  were all set. Screenshot: `04-lodge-info-step-filled.png`.
+  were all set. Screenshot: `specs/screenshots/lodge-owner-crud/04-lodge-info-step-filled.png`.
 - Location step: selected Province "Banteay Meanchey" -> District "Malai" -> Commune "Boeng Beng"
   -> Village "Sangkae", exactly matching the reference script's location choice. Attempting to
   click the map (`.gm-style`, same locator the reference script uses) **caused a full browser-
@@ -229,7 +229,7 @@ All obtained via Playwright's accessibility-tree role/name locators (the MCP too
   had gone from 42 to 44 (two abandoned attempts), and `QA_Explore_Lodge_0804` appeared in
   `/en/lodges` with Status "Draft", 13 minutes old, Location/Category/etc. all preserved from
   before the crash. This confirms the wizard auto-saves progressively, not only on final submit —
-  see `04-lodge-owner.md` scenario 1.6 for the dedicated writeup. Screenshot: `05-lodges-list-view.png`.
+  see `04-lodge-owner.md` scenario 1.6 for the dedicated writeup. Screenshot: `specs/screenshots/lodge-owner-crud/05-lodges-list-view.png`.
 - Reopened the Draft via the row's first action icon (no accessible name — resolved by CSS position
   in this session; in a real spec use the row menu's `Edit` link instead, see below) -> landed on
   `/en/lodges/editor/<id>` "Lodge Live Editor", 29% Completed. Screenshot implied by subsequent
@@ -241,8 +241,8 @@ All obtained via Playwright's accessibility-tree role/name locators (the MCP too
   (needed KM+FR), `Bedroom*` (New Room -> Title/Description in EN, KM, FR), `Bathroom*` (New
   Bathroom -> Title/Description in EN, KM, FR), and `Policies*` (Add Policy -> Check-in/Check-out
   Policy -> Title/Content in KM, EN, FR) — completion meter climbed 29% -> 57% -> 71% -> 86% -> 100%
-  as each section was finished. Screenshots: `06-bedroom-editor-empty.png`,
-  `07-policy-save-error-bug.png`, `08-editor-100-percent-complete.png`.
+  as each section was finished. Screenshots: `specs/screenshots/lodge-owner-crud/06-bedroom-editor-empty.png`,
+  `specs/screenshots/lodge-owner-crud/07-policy-save-error-bug.png`, `specs/screenshots/lodge-owner-crud/08-editor-100-percent-complete.png`.
 - **Bug hit and recovered**: saving the French Policy the first time failed with a visible error
   message "Failed to save policy: Expected property name or '}' in JSON at position 1 (line 1
   column 2)" — console showed the root cause: `Failed to load resource: the server responded with
@@ -258,7 +258,7 @@ All obtained via Playwright's accessibility-tree role/name locators (the MCP too
   showed Status "Pending Review". No explicit "success"/toast text was captured in the snapshot at
   that moment — success was confirmed via the redirect + status change rather than a message, so
   automation should assert on the list status, not on toast text. Screenshot:
-  `09-lodges-list-pending-review.png`.
+  `specs/screenshots/lodge-owner-crud/09-lodges-list-pending-review.png`.
 
 ### 1.2 Create Lodge — negative/validation — **PASS (documented as expected, not a defect)**
 
@@ -276,7 +276,7 @@ All obtained via Playwright's accessibility-tree role/name locators (the MCP too
   `Add Loge` button (`/lodges/new`), a "`N` loges" count, search box, sort combobox, `Filter`
   button, and a 10-column table: No. / Loge / Location / Type / Price / Discount / Available in /
   Status / Last Updated / Actions. Pagination: "Page 1 of 3", 20 rows/page. Screenshots:
-  `05-lodges-list-view.png`, `11-lodges-list-after-price-update.png`.
+  `specs/screenshots/lodge-owner-crud/05-lodges-list-view.png`, `specs/screenshots/lodge-owner-crud/11-lodges-list-after-price-update.png`.
 - Status values observed directly: "Draft" and "Pending Review". "Published" was not present on
   page 1 of results during this session but is confirmed to exist via the dashboard's "Published
   Lodges: 2" stat tile.
@@ -290,7 +290,7 @@ All obtained via Playwright's accessibility-tree role/name locators (the MCP too
   submitted lodge).
 - Edited the EN Description (appended " UPDATED via edit test.") and Saved — the section's Save
   button went back to `disabled` immediately, and the live preview iframe showed the new text.
-  Screenshot: `10-description-edited-saved.png`.
+  Screenshot: `specs/screenshots/lodge-owner-crud/10-description-edited-saved.png`.
 - Changed `Price per night*` from `10` to `15` in the Pricing section — the VAT/base-price preview
   recalculated live ("$16.50 including 10% VAT") before Save was even clicked. Clicked Save (button
   became enabled/clickable once the value changed) then `Close`.
@@ -307,10 +307,10 @@ All obtained via Playwright's accessibility-tree role/name locators (the MCP too
 - The only lifecycle action beyond Edit is **Delete**, reached via the row kebab menu. Clicking
   `Delete` opened an `alertdialog`: heading "Are you absolutely sure?", body "This action cannot be
   undone. This will permanently delete your property and remove your data from our servers.",
-  buttons `Cancel` / `Delete`. Screenshot: `12-delete-confirmation-dialog.png`.
+  buttons `Cancel` / `Delete`. Screenshot: `specs/screenshots/lodge-owner-crud/12-delete-confirmation-dialog.png`.
 - Clicked the dialog's `Delete` button -> the row disappeared from the list immediately (no reload
   needed) and the "`N` loges" count dropped from 44 to 43, confirmed by re-reading the list.
-  Screenshot: `13-lodges-list-after-delete.png`.
+  Screenshot: `specs/screenshots/lodge-owner-crud/13-lodges-list-after-delete.png`.
 - **GAP**: no Archive / Deactivate / Unpublish / "revert to Draft" action exists anywhere in the
   owner UI (not in the row menu, not in the 3 unlabeled row icon-buttons, not in the Lodge Live
   Editor's own header). An owner who wants to temporarily hide a lodge without permanently

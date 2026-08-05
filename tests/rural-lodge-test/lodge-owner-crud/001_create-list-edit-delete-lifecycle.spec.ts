@@ -4,6 +4,9 @@ import path from 'path';
 /**
  * Lodge Owner CRUD: Create -> List/Read -> Edit -> Delete, run serially against ONE lodge created
  * in the first test (its randomized/timestamped name is shared via closure across the suite).
+ * Kept as a single file (rather than one-scenario-per-file like the rest of this suite) because
+ * tests 2-4 have a genuine DATA dependency on the lodge test 1 creates - Playwright test files
+ * can't share in-memory state via closures across files.
  *
  * Based on the previously-debugged reference script
  * `C:\Users\khuoybo\Downloads\Project\Rural_lodge_testing\tests\001_ Create_Lodge.spec.ts`, updated
@@ -26,7 +29,7 @@ if (!TEST_EMAIL || !TEST_PASSWORD) {
   throw new Error('TEST_USER_EMAIL / TEST_USER_PASSWORD must be set in .env');
 }
 
-const TEST_IMAGE_PATH = path.resolve(__dirname, 'fixtures', 'qa-test-image.png');
+const TEST_IMAGE_PATH = path.resolve(__dirname, '..', 'fixtures', 'qa-test-image.png');
 
 const randomString = (length = 6) => {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -41,7 +44,8 @@ async function login(page: Page) {
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await page.waitForURL((url) => !url.pathname.includes('/auth'), { timeout: 15000 });
   // The AUTH_TOKEN cookie settles asynchronously just after the redirect; touching a protected
-  // route too early races the app into treating the session as logged-out (see lodge-owner-modules.spec.ts).
+  // route too early races the app into treating the session as logged-out (see
+  // lodge-owner-modules/005_profile-display-name-edit.spec.ts for the identical race).
   await page.waitForFunction(() => document.cookie.includes('AUTH_TOKEN'), { timeout: 10000 });
   await page.waitForTimeout(1000);
 }
@@ -375,7 +379,7 @@ test.describe.serial('Lodge Owner CRUD', () => {
       await expect(nameInput).toHaveValue(lodgeName);
 
       const descEditor = page.locator('.tiptap[contenteditable="true"], [contenteditable="true"][role="textbox"]').first();
-      await descEditor.fill('Automated QA lodge created by lodge-owner-crud.spec.ts');
+      await descEditor.fill('Automated QA lodge created by the lodge-owner-crud lifecycle test');
 
       await page.getByRole('button', { name: 'Beachfront Villa' }).first().click();
       await page.getByRole('button', { name: 'One Bedroom', exact: true }).first().click();

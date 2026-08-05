@@ -7,7 +7,14 @@ node_modules/
 /playwright/.auth/
 /test-results/*
 !/test-results/*.md
+/playwright-output/
 /.playwright-mcp/
+
+# Allure / monocart report output (regenerated per run, not source)
+/allure-results/
+/allure-report/
+/allure-history/
+/monocart-report/
 
 # Secrets
 .env

@@ -11,6 +11,10 @@ process.loadEnvFile(path.resolve(__dirname, '.env'));
  */
 export default defineConfig({
   testDir: './tests',
+  /* Playwright wipes this directory at the start of every run. Point it elsewhere so it never
+   * collides with test-results/, which holds our hand-authored Report.md - discovered the hard
+   * way when a run silently deleted it (the default outputDir IS test-results/). */
+  outputDir: './playwright-output',
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -35,8 +39,18 @@ export default defineConfig({
    * latency, so it's raised suite-wide rather than patched test-by-test.
    */
   timeout: 45000,
-  /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: 'html',
+  /* Writes allure-results/environment.properties so the Allure report's Environment widget
+   * isn't empty. */
+  globalSetup: require.resolve('./tests/global-setup'),
+  /* Reporter to use. See https://playwright.dev/docs/test-reporters
+   * monocart-reporter added alongside Allure - a single self-contained HTML file (no Java, no
+   * server needed) for a quick tree-grid view; Allure kept for its richer history/trends view. */
+  reporter: [
+    ['list'],
+    ['html'],
+    ['allure-playwright'],
+    ['monocart-reporter', { outputFile: './monocart-report/index.html' }],
+  ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('')`. */
