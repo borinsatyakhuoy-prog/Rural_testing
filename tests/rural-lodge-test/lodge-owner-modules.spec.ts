@@ -80,9 +80,14 @@ test.describe('Lodge Owner - other modules', () => {
 
     // This dedicated QA Owner account may genuinely have 0 reservations - accept either the
     // documented empty state or real data rows rather than asserting one specific outcome.
+    // Observed during Step 5 healing: with 0 reservations the page shows a "0 Reservations"
+    // counter and an empty table body, NOT a "No results found" message (that copy may apply
+    // elsewhere but not here) - check for either empty-state signal, not just one.
     const noResults = page.getByText(/no results found/i);
+    const zeroCounter = page.getByText(/^0 Reservations$/);
     const dataRowCount = await page.getByRole('row').count(); // includes the header row
-    const hasEmptyState = await noResults.isVisible().catch(() => false);
+    const hasEmptyState = (await noResults.isVisible().catch(() => false))
+      || (await zeroCounter.isVisible().catch(() => false));
     expect(hasEmptyState || dataRowCount > 1).toBeTruthy();
   });
 
@@ -163,9 +168,13 @@ test.describe('Lodge Owner - other modules', () => {
     // internal retry/settle waits) followed by TWO full edit+"Save Changes"+reload round-trips
     // (change name, then revert it) - each a real server round-trip. Under this staging backend's
     // observed slowness (see specs/exploratory-findings.md), the default 30s test timeout leaves
-    // too little margin, especially when running alongside other files/workers. test.slow() gives
-    // it 3x the timeout rather than a blind sleep.
-    test.slow();
+    // too little margin, especially when running alongside other files/workers.
+    // Step 5 healing: test.slow()'s 3x multiplier (135s) still wasn't enough headroom for BOTH
+    // round-trips when the "Joined" text's post-reload re-render is itself slow on one of them -
+    // the test was observed to time out even though the rename had genuinely already succeeded.
+    // Set an explicit, larger timeout instead, matching the pattern already used for the heaviest
+    // test in lodge-owner-crud.spec.ts.
+    test.setTimeout(240000);
     await loginAsOwner(page);
     await page.getByRole('button', { name: 'Profile', exact: true }).click();
     await page.waitForURL(/\/profile-management/, { timeout: 15000 });
@@ -183,8 +192,14 @@ test.describe('Lodge Owner - other modules', () => {
       const joined = page.getByRole('main').getByText(/^Joined /);
       // This is called again after each reload (post-edit and post-revert), so the "Joined" text
       // itself may not have re-rendered yet - wait for it before walking ancestors, rather than
-      // taking an immediate zero-count as "structure changed".
-      await expect(joined).toBeVisible({ timeout: 20000 });
+      // taking an immediate zero-count as "structure changed". Observed during Step 5 healing to
+      // occasionally still not be visible even after 20s under slower staging load; one extra
+      // reload-and-retry recovers it rather than failing the whole test on a single slow load.
+      let visible = await joined.isVisible({ timeout: 20000 }).catch(() => false);
+      if (!visible) {
+        await page.reload();
+        await expect(joined).toBeVisible({ timeout: 30000 });
+      }
       for (let levels = 1; levels <= 8; levels++) {
         const candidate = joined.locator('xpath=' + Array(levels).fill('..').join('/')).getByRole('button');
         if ((await candidate.count()) > 0) return candidate.first();
@@ -194,7 +209,16 @@ test.describe('Lodge Owner - other modules', () => {
 
     const originalName = ((await (await getNameButton()).textContent()) ?? '').trim();
     expect(originalName.length).toBeGreaterThan(0);
-    const testName = 'QA Owner Test';
+    // ROOT CAUSE found during Step 5 healing (via live MCP browser diagnosis): a hardcoded
+    // testName here caused a self-perpetuating hang. If any earlier run of this test crashed
+    // before its `finally` revert ran, the account's real display name stays "QA Owner Test" -
+    // so on the NEXT run, originalName reads back as "QA Owner Test" too, making the "rename to
+    // testName" a genuine no-op. The app correctly does not surface a Save Changes bar for a
+    // no-op edit, so the test hung forever waiting for a Save button that would never appear -
+    // and every such failure left the fixture corrupted for the run after it. Guarantee testName
+    // can never collide with whatever originalName happens to be, so this test is self-healing
+    // regardless of what a previous crashed run left behind.
+    const testName = originalName === 'QA Owner Test' ? 'QA Owner' : 'QA Owner Test';
 
     async function changeNameTo(target: string) {
       await (await getNameButton()).click();

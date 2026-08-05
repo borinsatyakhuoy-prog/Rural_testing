@@ -112,7 +112,11 @@ test.describe('Customer Booking Cycle', () => {
     await bookCta.click();
 
     await page.waitForURL(/\/booking\?scheduleID=/, { timeout: 20000 });
-    await expect(page.getByText('Personal Details').first()).toBeVisible();
+    // The booking page shows a transient "Loading Your Booking... Fetching cart data" state
+    // before the real form resolves (see specs/exploratory-findings.md) - observed during Step 5
+    // healing to occasionally exceed the default 5s assertion timeout under staging load, so an
+    // explicit, longer timeout is given here rather than relying on the framework default.
+    await expect(page.getByText('Personal Details').first()).toBeVisible({ timeout: 20000 });
     await expect(page.getByText(/Booking is on Hold/i)).toBeVisible();
 
     await page.getByPlaceholder('Enter your phone number').fill('012345678');

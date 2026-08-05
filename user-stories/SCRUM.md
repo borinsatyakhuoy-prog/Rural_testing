@@ -5,7 +5,7 @@ Rural lodge
 
 ## Story Description
 <!-- need to update  -->
-
+Rural Lodge (https://staging-ruralloge.allweb.cloud) is a multilingual (KM/EN/FR) lodge-booking site. This suite covers AC1 (Authentication): login (happy path and negative), the "Forgot password?" OTP reset flow, logout, and protected-route session behavior. Exploration on staging showed several realities that differ from the story's assumptions: (1) submitting valid credentials redirects to the public home page ("/{locale}"), not to a "Dashboard" — a separate Dashboard exists at "/{locale}/customer/dashboard" reachable only from the account menu after login; (2) empty required fields never let you click "Continue" (it stays disabled) and once a field is touched-then-emptied it only gets a red "invalid" outline with no inline text message — there is no "Email is required" style copy; (3) invalid credentials correctly show the specific inline message "Invalid email or password. Please try again." and keep the user on /auth; (4) logout requires a "Confirm Logout" dialog and afterwards leaves the user on the current page rather than forcing a redirect; (5) directly opening a protected route (e.g. /en/customer/dashboard) after logout does NOT redirect to /login as the story assumes — it renders a broken/empty dashboard shell while the console silently logs "Authentication token not found in cookies" tRPC errors. That last point is a real defect/gap and is captured as its own test so it is tracked (expected: redirect to login) rather than silently accepted.
 
 ## Application URL
 https://staging-ruralloge.allweb.cloud/km

@@ -17,8 +17,16 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
-  /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
+  /* TEST_USER_EMAIL is shared across authentication.spec.ts, navigation.spec.ts, and
+   * lodge-owner-crud.spec.ts (unlike the dedicated OWNER_TEST_EMAIL/CUSTOMER_TEST_EMAIL accounts,
+   * which are already forced test.describe.serial within their own files for the same reason).
+   * Step 5 healing confirmed a real cross-file collision: running with multiple workers let two
+   * of those files log in as TEST_USER_EMAIL on the same staging backend at once, invalidating
+   * each other's session and causing a genuine (reproduced) failure in lodge-owner-crud's Delete
+   * test that did not occur in a single-worker run. Force workers: 1 everywhere, not just CI,
+   * until/unless a dedicated fourth test account removes the need to share TEST_USER_EMAIL.
+   */
+  workers: 1,
   /* This staging backend has repeatedly been observed to be genuinely slow under concurrent
    * automation load (see specs/exploratory-findings.md: 502s, multi-second dashboard/table loads,
    * "generous wait/poll time... several seconds observed") - real, successful page loads on

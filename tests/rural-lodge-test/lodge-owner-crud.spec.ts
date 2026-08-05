@@ -83,6 +83,28 @@ async function openRowActionsMenu(page: Page, name: string) {
   await row.getByRole('button').last().click();
 }
 
+/**
+ * Opens the row's Actions menu and clicks a named menuitem, retrying the whole open+click
+ * sequence a few times. The same kind of dropdown-menuitem instability documented on the
+ * in-editor language switcher ("element is not stable" / "element was detached from the DOM")
+ * also shows up here - re-opening the menu from scratch is cheap compared to losing the test to
+ * a single flaky click.
+ */
+async function clickRowMenuItem(page: Page, lodgeName: string, itemName: string) {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await openRowActionsMenu(page, lodgeName);
+      await page.getByRole('menuitem', { name: itemName, exact: true }).click({ timeout: 10000 });
+      return;
+    } catch (err) {
+      lastError = err;
+      await page.waitForTimeout(800);
+    }
+  }
+  throw lastError;
+}
+
 /** In-editor language switch: a button named EN/KH/FR opens a menu of English/Khmer/French. */
 async function switchLanguage(page: Page, targetLang: 'EN' | 'KH' | 'FR') {
   const langMap = { EN: 'English', KH: 'Khmer', FR: 'French' } as const;
@@ -125,22 +147,39 @@ async function switchLanguage(page: Page, targetLang: 'EN' | 'KH' | 'FR') {
  * with no error ever thrown. A single immediate check is not enough; re-check after a short delay
  * and redo the whole fill if the value reverted.
  */
-async function fillAndVerify(locator: Locator, value: string) {
+async function fillAndVerify(locator: Locator, value: string, options: { nudge?: boolean } = {}) {
+  const { nudge = true } = options;
   for (let attempt = 0; attempt < 5; attempt++) {
     await locator.fill(value);
     const immediateOk = (await locator.inputValue().catch(() => '')) === value;
     if (immediateOk) {
-      await locator.page().waitForTimeout(1000);
-      const stillOk = (await locator.inputValue().catch(() => '')) === value;
+      // A single re-check isn't always enough - on the Pricing field specifically, a clobber was
+      // observed to land more than a second after the field looked stable. Poll across a longer
+      // window (~3s total) so a slower-resolving fetch still gets caught before we declare victory.
+      let stillOk = true;
+      for (let i = 0; i < 3; i++) {
+        await locator.page().waitForTimeout(1000);
+        stillOk = (await locator.inputValue().catch(() => '')) === value;
+        if (!stillOk) break;
+      }
       if (stillOk) {
-        // Some of this app's "unsaved changes" / Save-enablement tracking appears to key off
-        // real keyboard events rather than the input/change events fill() dispatches (observed:
-        // the field's value is confirmed correct, yet Save stays disabled indefinitely). Nudge
-        // with a harmless keypress pair (space then backspace - net-zero value change) so any
-        // onKeyDown/onKeyUp-based dirty tracking still sees a real typing signal.
-        await locator.press('End').catch(() => {});
-        await locator.press(' ').catch(() => {});
-        await locator.press('Backspace').catch(() => {});
+        if (nudge && value.length > 0) {
+          // Some of this app's "unsaved changes" / Save-enablement tracking appears to key off
+          // real keyboard events rather than the input/change events fill() dispatches (observed:
+          // the field's value is confirmed correct, yet Save stays disabled indefinitely). Nudge
+          // with a harmless keypress pair so any onKeyDown/onKeyUp-based dirty tracking still
+          // sees a real typing signal. A plain space+backspace corrupted the currency-masked
+          // Pricing field ("15" -> "1", confirmed via live diagnostics) - its own live-formatting
+          // backspace handling (for the "$X including 10% VAT" preview) doesn't expect a space.
+          // Duplicating the field's own last character then removing it uses only characters the
+          // field already accepts, so it's safe for both plain text and masked numeric inputs.
+          const lastChar = value[value.length - 1];
+          await locator.press('End').catch(() => {});
+          await locator.press(lastChar).catch(() => {});
+          await locator.press('Backspace').catch(() => {});
+          // Re-verify nothing drifted from the nudge itself before declaring success.
+          if ((await locator.inputValue().catch(() => '')) !== value) continue;
+        }
         return;
       }
       // Value reverted after the delay - a fetch response clobbered it. Fall through and retry.
@@ -158,13 +197,54 @@ async function fillContentEditableAndVerify(locator: Locator, value: string) {
     await locator.fill(value);
     const immediateOk = ((await locator.textContent().catch(() => '')) ?? '').trim() === value;
     if (immediateOk) {
-      await locator.page().waitForTimeout(1000);
-      const stillOk = ((await locator.textContent().catch(() => '')) ?? '').trim() === value;
+      // Same longer stability window as fillAndVerify - a clobber from a slow-resolving fetch
+      // isn't always caught by a single ~1s re-check.
+      let stillOk = true;
+      for (let i = 0; i < 3; i++) {
+        await locator.page().waitForTimeout(1000);
+        stillOk = ((await locator.textContent().catch(() => '')) ?? '').trim() === value;
+        if (!stillOk) break;
+      }
       if (stillOk) return;
     }
     await locator.page().waitForTimeout(500);
   }
   await expect(locator, `Content did not stick after repeated fill attempts: "${value}"`).toHaveText(value);
+}
+
+/**
+ * Reads a section's own badge in the Lodge Live Editor's section list (e.g. "Policies* Required:
+ * KM") and, if it isn't "Completed", re-runs `performLanguage` for just the language(s) still
+ * listed as required. Despite every timing safeguard in fillAndVerify/fillContentEditableAndVerify,
+ * one language out of three occasionally still doesn't stick end-to-end on a first pass (observed
+ * for Policies specifically, never the same language twice) - re-driving only the missing
+ * language is far cheaper than the whole section, and this check is the ground truth the app
+ * itself uses to gate "Request to review & Publish", not a guess.
+ */
+async function retryMissingLanguages(
+  page: Page,
+  sectionPattern: RegExp,
+  performLanguage: (lang: 'EN' | 'KH' | 'FR') => Promise<void>
+) {
+  const codeMap: Record<string, 'EN' | 'KH' | 'FR'> = { EN: 'EN', KM: 'KH', KH: 'KH', FR: 'FR' };
+  for (let pass = 0; pass < 2; pass++) {
+    const sectionBtn = page.getByRole('button', { name: sectionPattern }).first();
+    const text = (await sectionBtn.textContent().catch(() => '')) ?? '';
+    if (/Completed/i.test(text)) return;
+    const requiredMatch = text.match(/Required:\s*([A-Z, ]+)/i);
+    const missing = requiredMatch
+      ? requiredMatch[1]
+          .split(',')
+          .map((s) => codeMap[s.trim().toUpperCase()])
+          .filter((v): v is 'EN' | 'KH' | 'FR' => Boolean(v))
+      : [];
+    if (missing.length === 0) return;
+    await sectionBtn.click();
+    for (const lang of missing) {
+      await performLanguage(lang);
+    }
+    await backToSectionList(page);
+  }
 }
 
 /** Saves the currently-open editor section, retrying once against the documented transient 502. */
@@ -265,7 +345,7 @@ test.describe.serial('Lodge Owner CRUD', () => {
     // defensive retries added around known transient-instability points (switchLanguage,
     // fillAndVerify, backToSectionList, the image step's Next click), a slow moment on staging
     // can legitimately need more than 180s end-to-end without any single step being truly stuck.
-    test.setTimeout(300000);
+    test.setTimeout(360000);
 
     lodgeName = `QA_CRUD_${Date.now()}_${randomString(4)}`;
 
@@ -421,8 +501,7 @@ test.describe.serial('Lodge Owner CRUD', () => {
     });
 
     await test.step('Lodge Live Editor: Bedroom, Bathroom, Policies (all three languages required)', async () => {
-      await page.getByRole('button', { name: /Bedroom/i }).first().click();
-      for (const lang of ['EN', 'KH', 'FR'] as const) {
+      const fillOneBedroomLanguage = async (lang: 'EN' | 'KH' | 'FR') => {
         await switchLanguage(page, lang);
         const newRoomBtn = page.getByRole('button', { name: /New Room/i }).first();
         if (await newRoomBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
@@ -436,11 +515,16 @@ test.describe.serial('Lodge Owner CRUD', () => {
         await fillAndVerify(page.getByRole('textbox', { name: /Title\*/i }).first(), `Bedroom ${lang}`);
         await fillAndVerify(page.getByRole('textbox', { name: /Description/i }).first(), `Bedroom description ${lang}`);
         await saveSection(page);
+      };
+
+      await page.getByRole('button', { name: /Bedroom/i }).first().click();
+      for (const lang of ['EN', 'KH', 'FR'] as const) {
+        await fillOneBedroomLanguage(lang);
       }
       await backToSectionList(page);
+      await retryMissingLanguages(page, /Bedroom/i, fillOneBedroomLanguage);
 
-      await page.getByRole('button', { name: /Bathroom/i }).first().click();
-      for (const lang of ['EN', 'KH', 'FR'] as const) {
+      const fillOneBathroomLanguage = async (lang: 'EN' | 'KH' | 'FR') => {
         await switchLanguage(page, lang);
         const newBathBtn = page.getByRole('button', { name: /New Bathroom/i }).first();
         if (await newBathBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
@@ -451,11 +535,16 @@ test.describe.serial('Lodge Owner CRUD', () => {
         await fillAndVerify(page.getByRole('textbox', { name: /Title\*/i }).first(), `Bathroom ${lang}`);
         await fillAndVerify(page.getByRole('textbox', { name: /Description/i }).first(), `Bathroom description ${lang}`);
         await saveSection(page);
+      };
+
+      await page.getByRole('button', { name: /Bathroom/i }).first().click();
+      for (const lang of ['EN', 'KH', 'FR'] as const) {
+        await fillOneBathroomLanguage(lang);
       }
       await backToSectionList(page);
+      await retryMissingLanguages(page, /Bathroom/i, fillOneBathroomLanguage);
 
-      await page.getByRole('button', { name: /Policies/i }).first().click();
-      for (const lang of ['EN', 'KH', 'FR'] as const) {
+      const fillOnePolicyLanguage = async (lang: 'EN' | 'KH' | 'FR') => {
         await switchLanguage(page, lang);
         const addPolicyBtn = page.getByRole('button', { name: /Add Policy/i }).first();
         if (await addPolicyBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
@@ -468,8 +557,18 @@ test.describe.serial('Lodge Owner CRUD', () => {
         await fillAndVerify(page.getByRole('textbox', { name: /Policy Title/i }).first(), `Policy ${lang}`);
         await fillContentEditableAndVerify(page.locator('.tiptap[contenteditable="true"]').last(), `Policy content ${lang}`);
         await saveSection(page);
+      };
+
+      await page.getByRole('button', { name: /Policies/i }).first().click();
+      for (const lang of ['EN', 'KH', 'FR'] as const) {
+        await fillOnePolicyLanguage(lang);
       }
       await backToSectionList(page);
+      // Despite every timing safeguard above, one language out of three has occasionally still
+      // not stuck end-to-end on the first pass (a different language each time it happened) -
+      // check the section's own "Completed"/"Required: X" badge (the app's own ground truth) and
+      // redo just what's missing before moving on.
+      await retryMissingLanguages(page, /Policies/i, fillOnePolicyLanguage);
     });
 
     await test.step('Request to review & Publish', async () => {
@@ -496,15 +595,14 @@ test.describe.serial('Lodge Owner CRUD', () => {
   });
 
   test('3. Edit - updated description and price persist', async ({ page }) => {
-    test.setTimeout(90000);
+    test.setTimeout(150000);
     expect(lodgeName, 'Create test must have run first and set lodgeName').not.toBe('');
 
     await login(page);
     await gotoLodgesList(page);
     await searchForLodge(page, lodgeName);
 
-    await openRowActionsMenu(page, lodgeName);
-    await page.getByRole('menuitem', { name: 'Edit', exact: true }).click();
+    await clickRowMenuItem(page, lodgeName, 'Edit');
     await page.waitForURL(/\/lodges\/editor\//, { timeout: 15000 });
 
     await test.step('Edit Description', async () => {
@@ -512,11 +610,8 @@ test.describe.serial('Lodge Owner CRUD', () => {
       const descEditor = page.locator('.tiptap[contenteditable="true"]').first();
       await descEditor.waitFor({ state: 'visible', timeout: 15000 });
       const currentText = (await descEditor.textContent()) ?? '';
-      await descEditor.fill(`${currentText} UPDATED via edit test.`);
-      const saveBtn = page.getByRole('button', { name: 'Save', exact: true }).first();
-      await saveBtn.click();
-      // The section's own Save button goes back to disabled immediately after a successful save.
-      await expect(saveBtn).toBeDisabled({ timeout: 10000 });
+      await fillContentEditableAndVerify(descEditor, `${currentText} UPDATED via edit test.`);
+      await saveSection(page);
       await backToSectionList(page);
     });
 
@@ -524,10 +619,12 @@ test.describe.serial('Lodge Owner CRUD', () => {
       await page.getByRole('button', { name: /Pricing/i }).first().click();
       const price = priceInput(page);
       await price.waitFor({ state: 'visible', timeout: 15000 });
-      await price.fill('15');
-      await expect(price).toHaveValue('15');
-      await page.getByRole('button', { name: 'Save', exact: true }).first().click();
-      await page.waitForTimeout(1000);
+      await fillAndVerify(price, '15');
+      // Unlike every other field in this suite, editing an EXISTING lodge's price (as opposed to
+      // entering it for the first time during Create) seems to additionally need a real blur
+      // event before Save reacts - fillAndVerify's own keyboard nudge alone wasn't enough here.
+      await price.blur().catch(() => {});
+      await saveSection(page);
     });
 
     // Navigate away via a direct goto (not the editor's own "Close" control) to sidestep the
@@ -545,8 +642,7 @@ test.describe.serial('Lodge Owner CRUD', () => {
     await searchForLodge(page, lodgeName);
     await expect(lodgeRow(page, lodgeName)).toBeVisible({ timeout: 15000 });
 
-    await openRowActionsMenu(page, lodgeName);
-    await page.getByRole('menuitem', { name: 'Delete', exact: true }).click();
+    await clickRowMenuItem(page, lodgeName, 'Delete');
 
     const dialog = page.getByRole('alertdialog');
     await expect(dialog).toContainText('This action cannot be undone');

@@ -111,7 +111,10 @@ test.describe('Authentication', () => {
     // (no dropdown opens), which then hangs the next locator waiting for a menuitem that never
     // appears. Wait for the initials text to render before clicking.
     const accountButton = page.getByRole('banner').getByRole('button').last();
-    await expect(accountButton).not.toHaveText('', { timeout: 10000 });
+    // Bumped from 10s: observed to occasionally exceed 10s under slower staging load during
+    // Step 5 healing (see Report.md) - the account button/profile fetch itself isn't flaky,
+    // just sometimes slower than 10s end-to-end.
+    await expect(accountButton).not.toHaveText('', { timeout: 20000 });
     await accountButton.click();
     await page.getByRole('menuitem', { name: 'Logout' }).click();
 
@@ -148,7 +151,10 @@ test.describe('Authentication', () => {
     // account button briefly renders with no text while the user's profile loads, and clicking
     // it during that window does not open the dropdown menu.
     const accountButton = page.getByRole('banner').getByRole('button').last();
-    await expect(accountButton).not.toHaveText('', { timeout: 10000 });
+    // Bumped from 10s: observed to occasionally exceed 10s under slower staging load during
+    // Step 5 healing (see Report.md) - the account button/profile fetch itself isn't flaky,
+    // just sometimes slower than 10s end-to-end.
+    await expect(accountButton).not.toHaveText('', { timeout: 20000 });
     await accountButton.click();
     await page.getByRole('menuitem', { name: 'Logout' }).click();
     const dialog = page.getByRole('alertdialog');

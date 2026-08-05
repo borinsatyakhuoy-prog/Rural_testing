@@ -43,7 +43,7 @@ differences from what the script assumes:
 - **A real transient bug was reproduced**: saving a Policy occasionally fails with a raw
   `TRPCClientError`/502 surfaced verbatim to the user ("Failed to save policy: Expected property
   name or '}' in JSON at position 1..."). Unlike the known silent-failure defect documented in
-  `authentication.md`/`error-handling.md`, this one at least shows *a* message (if a very
+  `01-authentication.md`/`03-error-handling.md`, this one at least shows *a* message (if a very
   technical, non-actionable one) — retrying the same Save click succeeded.
 - **Lodges remain fully editable while "Pending Review"** — there is no read-only/locked state for
   a submitted-but-not-yet-approved lodge; the owner can keep changing Titles/Description/Price/etc.
@@ -104,7 +104,7 @@ differences from what the script assumes:
     unselected)
     - expect: `Next` remains disabled — there is no inline "Name is required" text message, the
       button simply never becomes clickable (same "disabled-button-instead-of-message" pattern
-      documented for the login form in `authentication.md`)
+      documented for the login form in `01-authentication.md`)
   2. On the Location step, fill Province/District/Commune/Village but do not interact with the map
     - expect: `Next` remains disabled until a map pin/location is set
   3. In the Lodge Live Editor, before completing all required per-language sections, inspect the
@@ -350,7 +350,7 @@ only.
   2. GAP/LIMITATION: no real notification content/format was observed since this account has never
     received a reservation request, status change, or system message. Per the `notifications.getMy`
     / `notifications.getUnreadCount` tRPC calls referenced elsewhere in this spec suite (see the
-    protected-route defect in `authentication.md`), notifications are backed by a real API and are
+    protected-route defect in `01-authentication.md`), notifications are backed by a real API and are
     most likely triggered by new booking requests and reservation status changes.
     **Recommendation:** re-run this scenario once a booking request exists against one of this
     owner's lodges, to capture the actual notification item's layout/content and confirm
@@ -419,7 +419,7 @@ only.
   1. In the sidebar user-info card (below the logo, above "Main" nav), click `Switch to Traveller`
     - expect: Navigates to `/{locale}/customer/dashboard` (the Traveller/Customer dashboard) —
       confirms this account is dual-role, matching the "Owner QA (Customer)" label seen in the
-      public-site account menu (see `authentication.md` / `lodge-owner.md` account descriptions)
+      public-site account menu (see `01-authentication.md` / `04-lodge-owner.md` account descriptions)
   2. Navigate directly back to `/{locale}/dashboard`
     - expect: The Lodge Owner dashboard loads normally regardless of which "mode" was last active —
       the toggle appears to be a navigation convenience rather than a persisted account-wide mode

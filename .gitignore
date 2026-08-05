@@ -5,7 +5,8 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
-/test-results/
+/test-results/*
+!/test-results/*.md
 /.playwright-mcp/
 
 # Secrets

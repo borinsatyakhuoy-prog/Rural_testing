@@ -6,8 +6,8 @@
 **Test account:** value of `TEST_USER_EMAIL` in `.env` (password from `TEST_USER_EMAIL`/`TEST_USER_PASSWORD`, not printed here)
 **Screenshots:** saved to the project root as `01-login-page-empty.png` … `22-dashboard-authenticated.png` (paths referenced below are relative to the repo root)
 
-Executed against the scenarios defined in `specs/planner/authentication.md`, `specs/planner/navigation.md`,
-and `specs/planner/error-handling.md`.
+Executed against the scenarios defined in `specs/planner/01-authentication.md`, `specs/planner/02-navigation.md`,
+and `specs/planner/03-error-handling.md`.
 
 ## Summary tally
 
@@ -24,7 +24,7 @@ Two additional minor findings not in the original plan were also discovered (see
 
 ---
 
-## Authentication (`authentication.md`)
+## Authentication (`01-authentication.md`)
 
 ### 1.1 Happy path: valid login redirects to home page — **PASS**
 - Navigated to `/en/auth`: title "Login - Rural Lodge", heading "Login to your account", Email/Password empty, Continue disabled. Screenshot: `01-login-page-empty.png`.
@@ -75,7 +75,7 @@ Two additional minor findings not in the original plan were also discovered (see
 
 ---
 
-## Navigation and Localization (`navigation.md`)
+## Navigation and Localization (`02-navigation.md`)
 
 ### 1.1 Top nav reaches Stay — **PASS**
 - From `/en/activity`, clicked "Stay" (href `/`) → URL stayed `/en` (locale preserved via client-side nav), hero "Where do you want to go next?" and lodge carousels visible.
@@ -111,7 +111,7 @@ Two additional minor findings not in the original plan were also discovered (see
 
 ---
 
-## Error Handling and No-Data States (`error-handling.md`)
+## Error Handling and No-Data States (`03-error-handling.md`)
 
 ### 1.1 Invalid login produces a specific, visible message — **PASS**
 - Same evidence as Authentication 1.2. Exact text shown, no blank page/unhandled overlay, user can correct and resubmit.
@@ -183,9 +183,9 @@ All obtained via Playwright's accessibility-tree role/name locators (the MCP too
 ## Lodge Owner CRUD
 
 **Date:** 2026-08-04
-**Scenarios executed against:** `specs/planner/lodge-owner.md`
+**Scenarios executed against:** `specs/planner/04-lodge-owner.md`
 **Reference script used as baseline:** `C:\Users\khuoybo\Downloads\Project\Rural_lodge_testing\tests\001_ Create_Lodge.spec.ts`
-**Account used:** the `.env` `TEST_USER_EMAIL` account, which on staging resolves to a "Lodge Owner" profile ("teba gof") with 40+ pre-existing lodges — session was already authenticated when this exploration began (persisted from a prior run), so the login step itself was not re-exercised here (see `authentication.md` for that coverage).
+**Account used:** the `.env` `TEST_USER_EMAIL` account, which on staging resolves to a "Lodge Owner" profile ("teba gof") with 40+ pre-existing lodges — session was already authenticated when this exploration began (persisted from a prior run), so the login step itself was not re-exercised here (see `01-authentication.md` for that coverage).
 **Test lodge created:** `QA_Explore_Lodge_0804` (id `501a3d20-c442-4f53-99c3-091befacec9c`), created, read, updated, then deleted during this session.
 
 ### Summary tally
@@ -229,7 +229,7 @@ All obtained via Playwright's accessibility-tree role/name locators (the MCP too
   had gone from 42 to 44 (two abandoned attempts), and `QA_Explore_Lodge_0804` appeared in
   `/en/lodges` with Status "Draft", 13 minutes old, Location/Category/etc. all preserved from
   before the crash. This confirms the wizard auto-saves progressively, not only on final submit —
-  see `lodge-owner.md` scenario 1.6 for the dedicated writeup. Screenshot: `05-lodges-list-view.png`.
+  see `04-lodge-owner.md` scenario 1.6 for the dedicated writeup. Screenshot: `05-lodges-list-view.png`.
 - Reopened the Draft via the row's first action icon (no accessible name — resolved by CSS position
   in this session; in a real spec use the row menu's `Edit` link instead, see below) -> landed on
   `/en/lodges/editor/<id>` "Lodge Live Editor", 29% Completed. Screenshot implied by subsequent
@@ -249,7 +249,7 @@ All obtained via Playwright's accessibility-tree role/name locators (the MCP too
   a status of 502 () @ .../api/trpc/policy.update?batch=1`, i.e. a transient 502 from the backend
   whose non-JSON error body broke the tRPC client's JSON parser, which then also threw 5x "Minified
   React error #419" (hydration mismatch) in the console. Unlike the silent-failure defect in
-  `authentication.md`/`error-handling.md` (protected route), this failure DID show the user a
+  `01-authentication.md`/`03-error-handling.md` (protected route), this failure DID show the user a
   message — just an unhelpful, technical one, not "Please try again" style copy. Clicking `Save`
   again immediately succeeded (100% Completed reached).
 - Clicked `Request to review & Publish` (enabled only once 100% Completed) -> a `Confirmation`
@@ -262,7 +262,7 @@ All obtained via Playwright's accessibility-tree role/name locators (the MCP too
 
 ### 1.2 Create Lodge — negative/validation — **PASS (documented as expected, not a defect)**
 
-- Confirmed the pattern already documented for login in `authentication.md`: required fields use
+- Confirmed the pattern already documented for login in `01-authentication.md`: required fields use
   a **disabled-button** gate rather than an inline "X is required" message. `Next` on the type/
   info/location steps and `Request to review & Publish` in the Lodge Live Editor were all observed
   disabled until their respective required data was complete — no separate negative-path bug found
@@ -315,7 +315,7 @@ All obtained via Playwright's accessibility-tree role/name locators (the MCP too
   owner UI (not in the row menu, not in the 3 unlabeled row icon-buttons, not in the Lodge Live
   Editor's own header). An owner who wants to temporarily hide a lodge without permanently
   destroying its data has no way to do so from the UI as of 2026-08-04 — delete is all-or-nothing.
-  This is documented as a product gap in `specs/planner/lodge-owner.md` scenario 1.5 rather than
+  This is documented as a product gap in `specs/planner/04-lodge-owner.md` scenario 1.5 rather than
   forced/faked in automation.
 
 ### Payment/billing UI — noted, not interacted with
@@ -375,7 +375,7 @@ All obtained via Playwright's accessibility-tree role/name locators (the MCP too
 ## Customer Booking Cycle
 
 **Date:** 2026-08-04
-**Scenarios executed against:** `specs/planner/customer-booking.md`
+**Scenarios executed against:** `specs/planner/05-customer-booking.md`
 **Account used:** the dedicated `.env.customer-test-account` account (`CUSTOMER_TEST_EMAIL` /
 `CUSTOMER_TEST_PASSWORD`, not printed here), which resolves to a "QA Customer" profile with no
 pre-existing bookings/wishlist items at the start of this session.
@@ -471,7 +471,7 @@ QR`, `Payment`, or entering any card details.
 - Guests dialog: with Adults at the lodge's max (1), the `+` button for Adults (and Children/Pets)
   is `disabled` — verified via `isDisabled()` and by attempting a click (no-op, count stayed at 1,
   no error shown). Consistent with the app-wide "disabled button instead of inline message"
-  validation pattern documented in `authentication.md` and `lodge-owner.md`.
+  validation pattern documented in `01-authentication.md` and `04-lodge-owner.md`.
 - Personal Details: `Next Step` gated solely on `Phone Number*` being non-empty; no additional
   format validation was observed.
 
@@ -612,7 +612,7 @@ QR`, `Payment`, or entering any card details.
 (display name "QA Owner", dual-role "Owner QA (Customer)" / Lodge Owner, 0 lodges / 0 reservations
 / 0 notifications at time of testing — a deliberately separate, "clean" account from the
 `TEST_USER_EMAIL` account used for the Lodge Owner CRUD pass documented above).
-**Scenarios executed against:** the new sections added to `specs/planner/lodge-owner.md`
+**Scenarios executed against:** the new sections added to `specs/planner/04-lodge-owner.md`
 (Reservations, Payout (view-only), Stay Management, Notifications, Profile / Account Settings).
 
 ### Summary tally
@@ -689,7 +689,7 @@ per-context `permissions`) to avoid this class of flake.
   notifications yet."
 - **GAP:** no real notification item was observed (this account has never received a booking
   request or status change to trigger one). Given the `notifications.getMy` /
-  `notifications.getUnreadCount` tRPC calls already documented in `authentication.md`'s
+  `notifications.getUnreadCount` tRPC calls already documented in `01-authentication.md`'s
   protected-route defect, this is backed by a real API; content/format needs a follow-up pass with
   an account that has actual reservation activity.
 

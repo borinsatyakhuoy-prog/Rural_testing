@@ -11,16 +11,27 @@ out explicitly (see "Key findings" below) instead of silently rewriting the stor
 
 ## Domain files
 
+Files are numbered by test criticality: Authentication and Navigation (core access/journey) first,
+then the cross-cutting Error Handling requirement, then the two large functional domains explored
+in Step 3b/3c (Lodge Owner CRUD + other owner modules, and the Customer booking cycle).
+
 | File | Covers | Scenario count |
 |---|---|---|
-| [`authentication.md`](./authentication.md) | AC1 - login (happy path + negative), Forgot password / OTP reset, password visibility, Sign In/Sign Up tabs, logout, protected-route session behavior | 9 |
-| [`navigation.md`](./navigation.md) | AC2 - top navigation bar (Stay / Offers / Activity), FR/EN/KH language toggle, locale-in-URL behavior, header consistency | 9 |
-| [`error-handling.md`](./error-handling.md) | Cross-cutting "no silent failure" requirement - invalid login message, empty-field feedback, no-data states, and the one real defect found (silent failure on a protected route) | 4 |
+| [`01-authentication.md`](./01-authentication.md) | AC1 - login (happy path + negative), Forgot password / OTP reset, password visibility, Sign In/Sign Up tabs, logout, protected-route session behavior | 9 |
+| [`02-navigation.md`](./02-navigation.md) | AC2 - top navigation bar (Stay / Offers / Activity), FR/EN/KH language toggle, locale-in-URL behavior, header consistency | 9 |
+| [`03-error-handling.md`](./03-error-handling.md) | Cross-cutting "no silent failure" requirement - invalid login message, empty-field feedback, no-data states, and the one real defect found (silent failure on a protected route) | 4 |
+| [`04-lodge-owner.md`](./04-lodge-owner.md) | Lodge Owner role - Create/List/Edit/Delete lodge CRUD, Reservations, Payout (view-only), Stay Management, Notifications, Profile/Account Settings | 6 |
+| [`05-customer-booking.md`](./05-customer-booking.md) | Customer role - browsing lodges, lodge detail view, booking flow up to (never including) payment, date/guest validation, Wishlist, customer dashboard/profile | 7 |
 
 Each scenario in every file has: a clear title, numbered step-by-step **perform** actions, an
 **expect** list of observable results per step, and the test data it needs (env-driven credentials,
 or explicit sample strings for negative cases). These are written so Step 4 (automation generation)
 can turn each scenario directly into a Playwright spec under `tests/rural-lodge-test/<domain>/`.
+
+**Renumbered 2026-08-04**: originally created as unnumbered per-domain files (`authentication.md`,
+`navigation.md`, `error-handling.md`), then two more domain files were added later in the same
+session (`lodge-owner.md`, `customer-booking.md`) without ever being linked from this index. All
+five are now numbered and linked here consistently.
 
 ## Key findings from live exploration (real UI vs. story assumptions)
 
@@ -47,7 +58,7 @@ can turn each scenario directly into a Playwright spec under `tests/rural-lodge-
   degraded dashboard shell ("Hello,", "No stats available", "No bookings found") while the browser
   console logs repeated `"Authentication token not found in cookies"` tRPC errors. This violates
   both AC1 and the Error Handling AC ("no silent failure or broken page") and is captured as its
-  own test in both `authentication.md` and `error-handling.md`, written to assert the *expected*
+  own test in both `01-authentication.md` and `03-error-handling.md`, written to assert the *expected*
   redirect-to-login behavior so it fails and is tracked until fixed.
 - **Language toggle**: is a header icon button present on every page (home, auth, logged-in,
   logged-out) - not only on one screen - and fully translates nav labels, hero copy, and header

@@ -20,7 +20,7 @@ Account Settings). Exploration on staging (logged in as the dedicated customer t
   Per task scope this exploration stopped at this screen and did not click `Scan QR` or the final
   `Payment` button, and did not enter any card details.
 - **The booking widget's required-field gating follows the same "disabled button, no inline
-  message" pattern** documented elsewhere in this repo (`authentication.md`, `lodge-owner.md`):
+  message" pattern** documented elsewhere in this repo (`01-authentication.md`, `04-lodge-owner.md`):
   `Book Now` stays disabled (and unlabeled beyond "Book Now") until both check-in and check-out
   dates are chosen, at which point its label becomes dynamic ("Book for N nights"); on the
   Personal Details step, `Next Step` stays disabled until `Phone Number*` is filled (Name/Email are
@@ -101,7 +101,7 @@ Account Settings). Exploration on staging (logged in as the dedicated customer t
     - expect: MINOR BUG - the document title briefly renders in Khmer (e.g. "វីឡាលើទឹកបឹងឈូក |
       Rural Loge") even though the URL locale is `/en`, before hydrating to the correct English
       title ("Lotus Lake Floating Villa | Rural Lodge") a moment later - the same locale-leak
-      pattern already documented for the "New Lodge" wizard in `lodge-owner.md`
+      pattern already documented for the "New Lodge" wizard in `04-lodge-owner.md`
 
 #### 1.3. Happy path: start a booking through to the Payment step (no payment submitted)
 
@@ -189,7 +189,7 @@ Account Settings). Exploration on staging (logged in as the dedicated customer t
     - expect: FOLLOW-UP (not verified in this session per task scope, which excludes payment): since
       no pending record appears even on the customer side, it is likely the lodge owner's
       Reservations list also would not show anything for an abandoned/unpaid booking attempt - this
-      should be confirmed independently from the owner account (see `lodge-owner.md`) rather than
+      should be confirmed independently from the owner account (see `04-lodge-owner.md`) rather than
       assumed, and rather than switching accounts mid-session here
 
 #### 1.6. Wishlist: add and remove a lodge
