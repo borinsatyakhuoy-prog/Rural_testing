@@ -17,6 +17,7 @@
 - **Cross-browser:** Firefox completed shortly after this cycle's chromium work (35 passed, 2 failed — both DEFECT-1, confirming it reproduces cross-browser). WebKit not yet run. See §5.
 - **Overall status: STABLE.** No new application defects were found or fixed this cycle — all healing was test-code/config correctness work. The 2 known application defects already catalogued from Step 3 remain open and are now enforced by automated regression tests rather than only documented narratively.
 - **Cycle 2 (2026-08-05): file-structure rework, performance suite, and 3 new test cases — suite grew from 37 to 46 tests.** By request, `tests/rural-lodge-test/` was reorganized from 6 flat per-domain spec files into `<domain>/NNN_description.spec.ts` subdirectories (matching the reference project's convention), with shared login helpers extracted to `helpers/auth.ts`. A new formal performance SLA (`specs/performance-sla.md`, `helpers/performance.ts`) with P99 gating was added (6 new tests, all passing, zero SLA FAILs — see §9). 3 new functional tests closed real coverage gaps found via live exploration: Google/Apple OAuth redirect verification (scoped to the boundary this app controls, per an explicit user decision — see §9) and the Stay Management calendar's real-data branch (previously only the empty-state was covered). Allure and monocart reporting were also wired in alongside the existing Playwright HTML report. **Final result: 42/46 passed (91.3%)** — the same 3 known-defect tests plus one recurrence of a low-frequency navigation hydration race (see §9). **A real config bug was also found and fixed:** Playwright's default `outputDir` was `test-results/` (the same folder holding this hand-authored report), so every run's own cleanup was silently deleting `Report.md` — fixed by pointing `outputDir` at a dedicated `playwright-output/` folder, the same fix the reference project already applied for the identical reason.
+- **Cycle 3 (2026-08-05): Step 8 Smart Re-run — catch-up documentation for 3 already-committed but unreported commits, plus 3 new authentication tests — suite grew from 46 to 68 tests.** Comparing the current test plan/scripts against this report surfaced that a security-test domain (`specs/planner/06-security.md`, 5 tests — one real finding, now DEFECT-2, auth cookies missing `HttpOnly`), 5 cross-module filter tests, and 5 more performance endpoints had already been committed (`9d14165`, `1fa301d`, `0135b4c`) without ever updating this report — retroactively documented in §10a, no re-work needed. Separately, 3 new scripts closed a genuine coverage gap (planner scenarios 1.5/1.6/1.9, password-toggle/tab-switch/manage-lodge-auth-gate — see §10b), scoped as a PARTIAL re-run since the user story and test plan's substance were unchanged. **Final result: 64/68 passed** — the same 3 (now 4, after a DEFECT ID renumbering — see §6) known-defect failures plus 2 transient staging-load flakes that both cleared on isolated re-run, one of them the same navigation hydration race already known from Cycle 2. See §10.
 
 ---
 
@@ -133,7 +134,14 @@ After logging out, navigating directly to `/en/customer/dashboard` does not redi
 **Recommendation:** route guards should validate actual auth-token presence/validity, not the `user` info cookie; logout should clear all auth-related cookies, not just the primary token.
 **Full step-by-step repro with screenshots:** see [`specs/defects/DEFECT-1-protected-route-after-logout.md`](../specs/defects/DEFECT-1-protected-route-after-logout.md).
 
-**DEFECT-2 (Severity: Medium) — Wishlist "Remove" toggle on the lodge-detail page does not persist server-side.**
+**DEFECT-2 (Severity: High) — Session cookies (`AUTH_TOKEN`, `user`) are not `HttpOnly`.**
+After login, both the real session token (`AUTH_TOKEN`) and the client-info cookie already implicated in DEFECT-1 (`user`) are `Secure`+`SameSite=Lax` but missing `HttpOnly`, so both — including a decodable, unexpired Supabase JWT sitting inside `user`'s `st` field — are readable/writable from any page JavaScript via `document.cookie`. No active exploit was demonstrated (no confirmed XSS injection point exists today), but the app's CSP already allow-lists `'unsafe-inline'`/`'unsafe-eval'` and several third-party script origins, so this is "one script-execution bug away" rather than purely theoretical — which is why it's rated High, not Medium. Also compounds DEFECT-1: because `user` is script-*writable*, not just readable, injected code could forge that cookie's presence to influence DEFECT-1's route guard.
+**Coverage:** `tests/rural-lodge-test/security/002_auth-cookies-not-httponly-defect.spec.ts` — reproduces 100% of the time (every login).
+**Recommendation:** set `HttpOnly` on both cookies at issuance (`Set-Cookie: ...; HttpOnly`); no client code should need to read either cookie's raw value directly.
+**Full repro with cookie capture and decoded JWT:** see [`specs/defects/DEFECT-2-auth-cookies-not-httponly.md`](../specs/defects/DEFECT-2-auth-cookies-not-httponly.md).
+
+**DEFECT-3 (Severity: Medium) — Wishlist "Remove" toggle on the lodge-detail page does not persist server-side.**
+*(Renumbered from DEFECT-2 in Cycle 3 — the security pass above independently assigned "DEFECT-2" to the auth-cookie finding before this doc's existing Wishlist entry was noticed; DEFECT-3 avoids the ID collision. No code/test files reference the old number, so this is a documentation-only renumbering.)*
 Clicking the Save/Remove toggle a second time (while it reads "Remove") flips its own label back to "Save" — looking like a successful removal — but the item is still present when the Wishlist page is reloaded. The "add" path persists correctly; only the "remove" path on this specific control is affected. The dedicated Wishlist-page removal button + confirmation dialog works correctly and is the reliable removal path.
 **Coverage:** `tests/rural-lodge-test/customer-booking/006_wishlist-remove-toggle-defect.spec.ts` — reproduces 100% of the time.
 **Recommendation:** the lodge-detail toggle's "remove" path needs to actually await/persist its mutation rather than only updating local/optimistic UI state.
@@ -231,3 +239,62 @@ The 49 exploratory-testing screenshots (previously loose in the project root) we
 ### 9f. Final result this cycle
 
 **42/46 passed (91.3%), chromium.** The same 3 known-defect tests (unchanged, still correctly documenting DEFECT-1 and DEFECT-2) plus one recurrence of the `navigation/001` "Stay" click hydration race first found and "fixed" during Step 5 — it reproduced again in this cycle's full run despite the earlier `waitForLoadState('load')` fix, then passed cleanly on isolated re-run both times it's been seen. This is now understood as a genuine, if low-frequency (~1-in-3 to 1-in-4 full runs), timing race in the app's own client-side router rather than a fully-fixable test issue — documented as a residual known flake rather than chased further with additional timing hacks.
+
+---
+
+## 10. Cycle 3 (2026-08-05): Catch-Up Documentation + New Authentication Coverage
+
+**Scope:** entered via `QAE2EPromtFile.md` Step 8 (Smart Re-run). Comparing the current user story, test plan, scripts, and this report surfaced two separate things:
+1. Three commits (`9d14165`, `1fa301d`, `0135b4c`) had already added a full security-test domain and cross-module filter tests since Cycle 2, growing the suite from 46 to 65 tests — but none of it was ever folded into this report. That gap is closed retroactively in §10a below (no re-planning or re-exploration needed — the work was already done and stable).
+2. The working tree additionally had 3 new, uncommitted automation scripts (`authentication/009`-`011`) plus a filename-only edit to `specs/planner/01-authentication.md` pointing at them. Since `user-stories/SCRUM.md` was unchanged and the test plan's only edit was a file-path correction (no new/changed acceptance criteria), this was scoped as a **PARTIAL re-run (Steps 4-7 only)** — covered in §10b.
+
+### 10a. Retroactive catch-up: security suite + cross-module filter tests (already committed, undocumented until now)
+
+**Security domain (new, `specs/planner/06-security.md`, 5 tests in `tests/rural-lodge-test/security/`).** Live recon against staging surfaced one real finding and confirmed four other checks were already safe:
+- `001_security-response-headers.spec.ts` — `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, HSTS with `max-age`, and a restrictive CSP are all present on `/en` and `/en/auth`. PASS (regression lock-in).
+- `002_auth-cookies-not-httponly-defect.spec.ts` — **the one real finding**, now DEFECT-2 (see §6). Fails by design.
+- `003_open-redirect-returnurl.spec.ts` — `returnUrl=https://evil.example.com` cannot forward off-origin. PASS.
+- `004_xss-search-input-sanitization.spec.ts` — `<img src=x onerror=alert(1)>` in a real search field is not reflected unescaped; React's default escaping holds. PASS.
+- `005_unauthenticated-api-rejects-without-leaking-data.spec.ts` — a direct `booking.getBookings` call with cookies cleared gets a clean 401, no data leakage — confirms DEFECT-1 is a client-side/UX bug only, the server-side authorization boundary is already sound. PASS.
+
+**Cross-module functional filter tests (5 new tests).** Every listing page with a filter control now has a test proving the filter drives real server-side behavior (a URL query param or a distinctly-filtered API request), not just that the control renders: Owner Lodges status filter, Owner Reservations `res_status` filter sheet, Owner Payout filter panel (sections only, per the module's existing view-only scope), Customer My Booking status tabs (asserted via the `booking.getBookings` request payload), and Customer Notifications read/unread tabs (via the `notifications.getMy` request payload). All 5 pass.
+
+**Extended performance coverage (`9d14165`, 1 new test file).** T3 (API Read) SLA checks extended from login-only to 5 more endpoints (Customer Dashboard, Customer Wishlist, Owner Reservations, Owner Payout Overview, Owner Notifications). Also fixed a genuine Resource-Timing-buffer race (reading the buffer right after a UI marker could intermittently miss the entry) via a new `waitForResourceEntry()` poll helper, applied to the pre-existing login test too.
+
+**Documentation note:** `06-security.md`'s "DEFECT-2" and this report's pre-existing "DEFECT-2" (Wishlist) collided — resolved by renumbering Wishlist to DEFECT-3; see §6.
+
+### 10b. New this cycle: 3 authentication scenarios closed (Step 4-5, PARTIAL re-run)
+
+Planner scenarios 1.5, 1.6, and 1.9 in `specs/planner/01-authentication.md` were previously documented but had no automation script. Three new scripts close that gap:
+- `009_password-visibility-toggle.spec.ts` — the password field's icon-only show/hide toggle correctly masks/unmasks the typed value.
+- `010_auth-tab-switch.spec.ts` — the Sign In / Sign Up tabs swap in the registration form and back without leaking fields between states.
+- `011_manage-lodge-redirects-unauthenticated.spec.ts` — "Manage Your Lodge" correctly redirects an unauthenticated user to `/en/auth?returnUrl=%2F`, in explicit contrast to DEFECT-1's dashboard route.
+
+Ran headed on chromium: **3/3 passed on the first attempt, no healing required.**
+
+### 10c. Fresh full-suite baseline
+
+With the retroactive catch-up and the 3 new scripts, the suite now totals **68 tests** (up from 46 in Cycle 2). Ran headed, chromium, `workers: 1`:
+
+| Run | Passed | Failed | Total | Duration |
+|---|---|---|---|---|
+| Full suite (headed) | 62 | 6 | 68 | 13.6m |
+| Isolated re-run of the 2 non-defect failures | 1 | 1 | 2 | 31.8s |
+| Isolated re-run of the still-failing one alone | 1 | 0 | 1 | 24.3s |
+
+The full run's 6 failures resolve to exactly the 4 known-defect tests (expected, by design) plus 2 transient-staging-load flakes, both cleared on isolation:
+- **4 known-defect failures (unchanged, expected):** `authentication/006` + `error-handling/002` (DEFECT-1), `security/002` (DEFECT-2), `customer-booking/006` (DEFECT-3).
+- **`navigation/001`** — the same previously-documented "Stay" click hydration race from Cycle 2 (§9f); passed cleanly on isolated re-run.
+- **`performance/006` (P99 SLA)** — failed with `page.goto` exceeding the 45s timeout while running back-to-back with `navigation/001` (both hammer `/en` repeatedly); passed cleanly both alone and paired with only itself (P99 landed at 2517ms, a WARN within the 8000ms max, not a FAIL). Consistent with this suite's already-documented pattern of genuine transient staging slowness under concurrent load (`specs/exploratory-findings.md`), not a new regression.
+
+**Steady-state result: 64/68 passed, 4 known-defect failures, 0 unexplained failures.**
+
+### 10d. Files changed / to commit this cycle
+
+- `specs/planner/01-authentication.md` — file-path corrections for scenarios 1.5, 1.6, 1.9.
+- `tests/rural-lodge-test/authentication/009_password-visibility-toggle.spec.ts` (new)
+- `tests/rural-lodge-test/authentication/010_auth-tab-switch.spec.ts` (new)
+- `tests/rural-lodge-test/authentication/011_manage-lodge-redirects-unauthenticated.spec.ts` (new)
+- `test-results/Report.md` (this update)
+
+No other source files changed this cycle — the security suite, filter tests, and extended performance coverage documented in §10a were already committed in prior commits (`9d14165`, `1fa301d`, `0135b4c`) and required no changes, only documentation catch-up.

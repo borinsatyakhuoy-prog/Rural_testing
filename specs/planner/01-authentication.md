@@ -74,7 +74,7 @@ Rural Lodge (https://staging-ruralloge.allweb.cloud) is a multilingual (KM/EN/FR
 
 #### 1.5. Password field visibility toggle masks and reveals the typed password
 
-**File:** `tests/rural-lodge-test/authentication/password-visibility-toggle.spec.ts`
+**File:** `tests/rural-lodge-test/authentication/009_password-visibility-toggle.spec.ts`
 
 **Steps:**
   1. Navigate to /en/auth and type any string, e.g. 'Test1234!', into the Password field
@@ -86,7 +86,7 @@ Rural Lodge (https://staging-ruralloge.allweb.cloud) is a multilingual (KM/EN/FR
 
 #### 1.6. Sign In / Sign Up tab switch toggles the auth form mode
 
-**File:** `tests/rural-lodge-test/authentication/auth-tab-switch.spec.ts`
+**File:** `tests/rural-lodge-test/authentication/010_auth-tab-switch.spec.ts`
 
 **Steps:**
   1. Navigate to /en/auth and confirm the 'Sign In' tab is selected by default
@@ -127,7 +127,7 @@ Rural Lodge (https://staging-ruralloge.allweb.cloud) is a multilingual (KM/EN/FR
 
 #### 1.9. 'Manage Your Lodge' correctly redirects an unauthenticated user to login
 
-**File:** `tests/rural-lodge-test/authentication/manage-lodge-auth-gate.spec.ts`
+**File:** `tests/rural-lodge-test/authentication/011_manage-lodge-redirects-unauthenticated.spec.ts`
 
 **Steps:**
   1. Ensure logged out, then navigate to the home page '/en'
