@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { BASE_URL } from '../helpers/auth';
-import { getNavigationMetrics, getResourceDurations, attachMetrics, ratedLine, assertSLA, SLA } from '../helpers/performance';
+import { getNavigationMetrics, getResourceDurations, waitForResourceEntry, attachMetrics, ratedLine, assertSLA, SLA } from '../helpers/performance';
 
 /**
  * Real, unmocked navigation/paint timing for the login page, plus the actual duration of the
@@ -25,6 +25,10 @@ test.describe('Performance - Login', () => {
     // still genuinely in-flight.
     await expect(page).toHaveURL(`${BASE_URL}/en`, { timeout: 15_000 });
     const loginRoundTripMs = Date.now() - loginStart;
+    // The post-login redirect's first paint can beat the browser actually buffering the matching
+    // Resource Timing entry - poll the real buffer (see helpers/performance.ts) rather than assume
+    // it's already there, which was observed to intermittently read an empty result otherwise.
+    await waitForResourceEntry(page, 'trpc').catch(() => {});
     const trpcDurations = await getResourceDurations(page, 'trpc');
 
     const summary = [

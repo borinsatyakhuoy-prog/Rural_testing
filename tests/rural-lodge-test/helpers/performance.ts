@@ -49,6 +49,24 @@ export async function getResourceDurations(page: Page, urlSubstr: string): Promi
 }
 
 /**
+ * Waits until at least one Resource Timing entry matching `urlSubstr` has actually landed in the
+ * page's own performance buffer. A page's UI can render (e.g. a "Hello, <name>" greeting sourced
+ * from one batched call) before a *different* trpc batch relevant to the metric under test has
+ * finished - and even Playwright's own `page.waitForResponse` (a CDP network event) can resolve a
+ * tick before the browser buffers the matching Resource Timing entry. Polling the real
+ * `performance.getEntriesByType('resource')` buffer directly is what `getResourceDurations` reads
+ * from, so waiting on it here (rather than a UI marker or a response event) is what actually
+ * guarantees a non-empty result.
+ */
+export async function waitForResourceEntry(page: Page, urlSubstr: string, timeout = 15_000): Promise<void> {
+  await page.waitForFunction(
+    (substr) => performance.getEntriesByType('resource').some((r) => r.name.includes(substr)),
+    urlSubstr,
+    { timeout }
+  );
+}
+
+/**
  * Nearest-rank percentile over a set of samples (e.g. `percentile(durations, 99)` for P99). Used
  * to gate a *distribution* of repeated measurements rather than a single sample - see
  * `assertP99SLA` below. With a small sample count (kept modest here to avoid hammering the shared
