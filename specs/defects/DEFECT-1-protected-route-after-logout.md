@@ -68,6 +68,12 @@ account?", with **Cancel** and a red **Logout** button.
 Click the dialog's **Logout** button to confirm. The dialog closes and the header reverts to the
 generic (logged-out) login icon.
 
+> **This step itself is correct, not part of the defect.** After confirming logout, the app
+> correctly stays on/returns to the public landing page (`/en`) in a genuinely logged-out state —
+> no user session, generic login icon in the header. Logout does not force a redirect to any
+> other page, and that is expected behavior, not a bug. **The defect only appears in the next
+> step**, when a *protected* route is opened directly afterward.
+
 ![Header after logout, back to logged-out state](../screenshots/authentication/06-logged-out-header.png)
 
 ### 4. Navigate directly to the protected dashboard route
