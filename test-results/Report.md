@@ -14,7 +14,7 @@
 - **After healing:** the suite now runs consistently at **33-34 passed / 3 known-defect failures** (intentional — see below) **/ 0 unexplained failures**, with one residual, already-documented, low-frequency environment flake (see §3f).
 - **3 of the failures found in every run are not test bugs — they are the suite correctly, repeatably documenting 2 real, confirmed application defects** (the protected-route silent-failure bug is asserted from two files, plus the Wishlist remove-toggle bug). These are expected to fail until the application is fixed; see the Defects Log.
 - **5 real test-suite/config issues were root-caused and healed this cycle** (none were application bugs): a cross-file shared-account session collision, three timing/assertion gaps, and one self-perpetuating hang in the Lodge Owner Profile test caused by a hardcoded rename value colliding with account state left behind by an earlier crash. Full detail in §3.
-- **Cross-browser (Firefox/WebKit):** deferred for this cycle by request — chromium-only results below. A Firefox run was left executing in the background; see §5 for status.
+- **Cross-browser:** Firefox completed shortly after this cycle's chromium work (35 passed, 2 failed — both DEFECT-1, confirming it reproduces cross-browser). WebKit not yet run. See §5.
 - **Overall status: STABLE.** No new application defects were found or fixed this cycle — all healing was test-code/config correctness work. The 2 known application defects already catalogued from Step 3 remain open and are now enforced by automated regression tests rather than only documented narratively.
 
 ---
@@ -105,7 +105,19 @@ All scenarios expected to pass, passed. Two real, reproducible defects were foun
 
 ## 5. Cross-Browser Status
 
-Per `user-stories/SCRUM.md`'s Technical Notes ("Test across Chrome, Firefox, and Safari"), a Firefox run was started but this cycle's scope was directed to proceed to reporting/commit before it completed. **This is an open gap for the next cycle** — chromium is the only browser verified stable in this report. Recommend running `npx playwright test --project=firefox` and `--project=webkit` (sequentially, not concurrently with each other or with chromium, per the shared-account constraint in §3a) as a follow-up.
+Per `user-stories/SCRUM.md`'s Technical Notes ("Test across Chrome, Firefox, and Safari"), this cycle's scope was directed to proceed to reporting/commit before the cross-browser pass was prioritized; a Firefox run was left executing in the background and completed shortly after:
+
+| Browser | Passed | Failed | Total | Duration |
+|---|---|---|---|---|
+| chromium | 33-34 | 3 (known defects) | 37 | ~7-10m |
+| firefox | 35 | 2 | 37 | 8.9m |
+| webkit | — not yet run — | | | |
+
+**Firefox result: 35 passed, 2 failed — both are DEFECT-1** (`authentication.spec.ts` and `error-handling.spec.ts`'s protected-route tests), confirming the defect reproduces cross-browser, not just in chromium. The failure shape differs slightly by engine: chromium's `page.goto()` succeeds and stays on the dashboard URL (assertion times out waiting for a redirect that never comes), while Firefox's `page.goto()` itself throws `NS_BINDING_ABORTED; maybe frame was detached?` — consistent with the same underlying defect (no clean server/client redirect), just manifesting as a different low-level navigation signal per browser engine.
+
+**Notable: DEFECT-2 (Wishlist remove-toggle) did not reproduce in this Firefox run** (`customer-booking.spec.ts`'s Wishlist test passed). This is a single data point, not yet enough to conclude the bug is chromium-only — it could equally be a timing-dependent race that happened to resolve differently in Firefox this one time. Worth a repeat Firefox run to confirm before drawing a conclusion either way.
+
+**WebKit has not yet been run** — recommend as a follow-up, run sequentially (not concurrently with chromium/firefox or with itself, per the shared-account constraint in §3a).
 
 ---
 
@@ -154,6 +166,6 @@ Clicking the Save/Remove toggle a second time (while it reads "Remove") flips it
 - **The suite is stable.** All healing this cycle was test-code/config correctness work (a shared-account concurrency hazard, timing gaps, one narrow assertion, and one self-perpetuating test-fixture corruption) — **no new application defects were introduced or found**; the 2 already-known defects from Step 3 remain open and are now automated.
 - **Recommend engineering prioritize DEFECT-1** (protected-route silent failure) — it's the most severe finding, violates two acceptance criteria at once, and has a specific, narrow root-cause hint (route guard should validate the real auth token, not a stale `user` cookie's presence; logout should clear all auth-related cookies).
 - **Recommend DEFECT-2** (Wishlist remove-toggle) be fixed next — a real, if lower-severity, data-persistence bug that could confuse customers into thinking they removed something they didn't.
-- **Recommend running the cross-browser (Firefox/WebKit) pass** deferred this cycle, sequentially and not concurrently with any other run against these shared test accounts (§3a).
+- **Recommend running WebKit** (the remaining browser from the Technical Notes), sequentially and not concurrently with any other run against these shared test accounts (§3a). Firefox is now confirmed stable, with DEFECT-1 reproducing there too.
 - **Recommend a follow-up pass against an `OWNER_TEST_EMAIL`-equivalent account that has real reservation data**, to exercise the Reservations approve/reject/confirm actions and the owner-side view of an abandoned pre-payment booking — both currently only verifiable against empty-state UI.
 - **Process note for future cycles:** this project now has 4 test accounts in play (`TEST_USER_EMAIL`, `OWNER_TEST_EMAIL`, `CUSTOMER_TEST_EMAIL`); `TEST_USER_EMAIL` is still shared across 3 spec files with no in-file serialization (relying instead on the global `workers: 1` setting). If a dedicated fourth account is ever introduced to fully separate `lodge-owner-crud.spec.ts` from `authentication.spec.ts`/`navigation.spec.ts`, `workers` could potentially be relaxed back to parallel for faster runs — not attempted this cycle since it wasn't necessary to reach a stable suite.
