@@ -12,8 +12,10 @@ test.describe('Error Handling - no silent failure', () => {
     // real login+logout leaves that stale cookie behind, so this test logs in and out first
     // rather than visiting the route cold (which would silently test the wrong scenario).
     await page.goto(`${BASE_URL}/en/auth`);
-    await page.getByRole('textbox', { name: 'Email' }).fill(process.env.TEST_USER_EMAIL!);
-    await page.getByRole('textbox', { name: 'Password' }).fill(process.env.TEST_USER_PASSWORD!);
+    // pressSequentially, not fill: see the Cycle 4 note in
+    // authentication/001_valid-login-redirects-home.spec.ts.
+    await page.getByRole('textbox', { name: 'Email' }).pressSequentially(process.env.TEST_USER_EMAIL!);
+    await page.getByRole('textbox', { name: 'Password' }).pressSequentially(process.env.TEST_USER_PASSWORD!);
     await page.getByRole('button', { name: 'Continue', exact: true }).click();
     await page.waitForURL(`${BASE_URL}/en`);
 

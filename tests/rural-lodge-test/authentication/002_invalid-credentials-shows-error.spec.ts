@@ -8,8 +8,10 @@ test.describe('Authentication', () => {
     const emailField = page.getByRole('textbox', { name: 'Email' });
     const passwordField = page.getByRole('textbox', { name: 'Password' });
 
-    await emailField.fill('wrong.user@example.com');
-    await passwordField.fill('WrongPassword123!');
+    // pressSequentially, not fill: see the Cycle 4 note in 001_valid-login-redirects-home.spec.ts
+    // - WebKit's React controlled-input state doesn't pick up .fill()'s programmatic value set.
+    await emailField.pressSequentially('wrong.user@example.com');
+    await passwordField.pressSequentially('WrongPassword123!');
     await page.getByRole('button', { name: 'Continue', exact: true }).click();
 
     await expect(page).toHaveURL(/\/en\/auth/);

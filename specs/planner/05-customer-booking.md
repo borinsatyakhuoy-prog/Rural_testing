@@ -248,3 +248,28 @@ Account Settings). Exploration on staging (logged in as the dedicated customer t
       browse"), `First Name`/`Last Name` text fields pre-filled from the account, and `Cancel`/
       `Update Profile` buttons
     - expect: `Security Settings` tab shows "Change Password" with a "Last changed N days ago" note
+
+#### 1.8. NEW FINDING (Cycle 4): every "Explore Lodge" CTA in the customer dashboard opens a new browser tab
+
+**File:** `tests/rural-lodge-test/customer-booking/009_explore-lodge-cta-opens-new-tab.spec.ts`
+
+**Added:** Cycle 4, via live exploration with Playwright MCP (not in the original plan). Confirmed
+reproducible across all 3 "Explore Lodge" instances on the dashboard page (the sidebar link, the
+greeting-header button, and the "No bookings found" empty-state button): each opens `/{locale}` in
+a **brand-new browser tab**, unlike every other in-shell link (`Booking`/`Notifications`/`Wishlist`),
+which navigates in the same tab as expected. Documented as current behavior (asserted so it passes
+today, the same "regression lock-in" pattern already used for the Offers copy bug in
+`02-navigation.md` 1.12) rather than as a hard failure, since it may be an intentional design choice
+(escaping the authenticated dashboard shell into the separate public marketing site) - but it is a
+genuine UX inconsistency worth a product decision, since a customer clicking it repeatedly
+accumulates orphaned dashboard tabs with no way back except closing them manually.
+
+**Steps:**
+  1. Land on the empty `/{locale}/customer/dashboard` (0 bookings), locate the "No bookings found"
+    panel's `Explore Lodge` button, and click it while listening for a new-page/popup event
+    - expect: A new browser tab opens, navigating to `/{locale}` (the public home page)
+    - expect: The original dashboard tab's URL is unchanged (still `/customer/dashboard`) - the
+      click did not navigate the current tab at all
+  2. Recommendation: get explicit product sign-off on whether this is intentional; if not, the fix
+    is likely to drop `target="_blank"` (or its Next.js `<Link>` equivalent) from these 3 CTAs so
+    they behave like every other sidebar link

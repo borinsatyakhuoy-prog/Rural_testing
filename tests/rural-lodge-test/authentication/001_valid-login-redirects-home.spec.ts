@@ -11,8 +11,11 @@ test.describe('Authentication', () => {
 
     await expect(continueButton).toBeDisabled();
 
-    await emailField.fill(process.env.TEST_USER_EMAIL!);
-    await passwordField.fill(process.env.TEST_USER_PASSWORD!);
+    // pressSequentially, not fill: under WebKit specifically, .fill() sets the raw DOM value but
+    // this app's React controlled-input state never picks it up, so Continue stays disabled
+    // forever (confirmed via a full WebKit run, Cycle 4). Real keystroke events fix it everywhere.
+    await emailField.pressSequentially(process.env.TEST_USER_EMAIL!);
+    await passwordField.pressSequentially(process.env.TEST_USER_PASSWORD!);
     await expect(continueButton).toBeEnabled();
     await continueButton.click();
 

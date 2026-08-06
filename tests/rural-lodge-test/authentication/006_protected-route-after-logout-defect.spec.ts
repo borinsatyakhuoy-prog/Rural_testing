@@ -12,8 +12,9 @@ test.describe('Authentication', () => {
     // that stale cookie behind. So this test must log in and log out first, not just visit the
     // route cold, or it would silently test the wrong scenario and pass for the wrong reason.
     await page.goto(`${BASE_URL}/en/auth`);
-    await page.getByRole('textbox', { name: 'Email' }).fill(process.env.TEST_USER_EMAIL!);
-    await page.getByRole('textbox', { name: 'Password' }).fill(process.env.TEST_USER_PASSWORD!);
+    // pressSequentially, not fill: see the Cycle 4 note in 001_valid-login-redirects-home.spec.ts.
+    await page.getByRole('textbox', { name: 'Email' }).pressSequentially(process.env.TEST_USER_EMAIL!);
+    await page.getByRole('textbox', { name: 'Password' }).pressSequentially(process.env.TEST_USER_PASSWORD!);
     await page.getByRole('button', { name: 'Continue', exact: true }).click();
     await page.waitForURL(`${BASE_URL}/en`);
 

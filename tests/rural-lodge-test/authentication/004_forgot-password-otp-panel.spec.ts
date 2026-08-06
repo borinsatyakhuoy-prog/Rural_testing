@@ -19,7 +19,8 @@ test.describe('Authentication', () => {
     await expect(page.getByRole('button', { name: 'Back to login' })).toBeVisible();
 
     // Enabling the button is verified but a real OTP send is never triggered.
-    await page.getByRole('textbox', { name: 'Email *' }).fill(process.env.TEST_USER_EMAIL!);
+    // pressSequentially, not fill: see the Cycle 4 note in 001_valid-login-redirects-home.spec.ts.
+    await page.getByRole('textbox', { name: 'Email *' }).pressSequentially(process.env.TEST_USER_EMAIL!);
     await expect(sendOtpButton).toBeEnabled();
 
     await page.getByRole('button', { name: 'Back to login' }).click();

@@ -18,8 +18,10 @@ test.describe('Error Handling - no silent failure', () => {
     const emailField = page.getByRole('textbox', { name: 'Email' });
     const passwordField = page.getByRole('textbox', { name: 'Password' });
 
-    await emailField.fill('wrong.user@example.com');
-    await passwordField.fill('WrongPassword123!');
+    // pressSequentially, not fill: see the Cycle 4 note in
+    // authentication/001_valid-login-redirects-home.spec.ts.
+    await emailField.pressSequentially('wrong.user@example.com');
+    await passwordField.pressSequentially('WrongPassword123!');
     await page.getByRole('button', { name: 'Continue', exact: true }).click();
 
     // .first() because the same text can also transiently appear in a toast notification in

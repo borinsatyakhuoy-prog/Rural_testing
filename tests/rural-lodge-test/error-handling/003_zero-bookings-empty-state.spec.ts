@@ -7,8 +7,10 @@ test.describe('Error Handling - no silent failure', () => {
   }) => {
     await page.goto(`${BASE_URL}/en/auth`);
 
-    await page.getByRole('textbox', { name: 'Email' }).fill(process.env.CUSTOMER_TEST_EMAIL!);
-    await page.getByRole('textbox', { name: 'Password' }).fill(process.env.CUSTOMER_TEST_PASSWORD!);
+    // pressSequentially, not fill: see the Cycle 4 note in
+    // authentication/001_valid-login-redirects-home.spec.ts.
+    await page.getByRole('textbox', { name: 'Email' }).pressSequentially(process.env.CUSTOMER_TEST_EMAIL!);
+    await page.getByRole('textbox', { name: 'Password' }).pressSequentially(process.env.CUSTOMER_TEST_PASSWORD!);
     await page.getByRole('button', { name: 'Continue', exact: true }).click();
 
     await page.waitForURL(`${BASE_URL}/en`);

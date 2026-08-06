@@ -39,8 +39,11 @@ const randomString = (length = 6) => {
 /** Logs in and waits for the AUTH_TOKEN cookie to settle before any protected navigation. */
 async function login(page: Page) {
   await page.goto(`${BASE_URL}/en/auth`);
-  await page.getByRole('textbox', { name: 'Email' }).fill(TEST_EMAIL!);
-  await page.getByRole('textbox', { name: 'Password' }).fill(TEST_PASSWORD!);
+  // pressSequentially, not fill: under WebKit, .fill() sets the DOM value but this app's React
+  // controlled-input state never picks it up, so Continue stays disabled forever (confirmed via a
+  // full WebKit run, Cycle 4). Real keystroke events fix it everywhere.
+  await page.getByRole('textbox', { name: 'Email' }).pressSequentially(TEST_EMAIL!);
+  await page.getByRole('textbox', { name: 'Password' }).pressSequentially(TEST_PASSWORD!);
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await page.waitForURL((url) => !url.pathname.includes('/auth'), { timeout: 15000 });
   // The AUTH_TOKEN cookie settles asynchronously just after the redirect; touching a protected

@@ -202,6 +202,39 @@ differences from what the script assumes:
     - expect: Test suites that create throwaway lodges for other scenarios should explicitly delete
       them afterward (see 1.5) to avoid leaving orphaned Draft rows in the shared staging account
 
+#### 1.7. Lodges list filters by Status (added Cycle 3)
+
+**File:** `tests/rural-lodge-test/lodge-owner-crud/002_lodges-list-status-filter.spec.ts`
+
+**Steps:**
+  1. Open the `Filter` sheet on `/{locale}/lodges`, check the "Draft" status checkbox, apply
+    - expect: URL gains `prop_status=Draft`; the "`N` loges" count narrows and every visible row's
+      Status cell reads "Draft" — confirming a real server-side filter, not a no-op
+
+#### 1.8. Lodges list search box filters by lodge name (new, Cycle 4)
+
+**File:** `tests/rural-lodge-test/lodge-owner-crud/003_lodges-list-search-filters-by-name.spec.ts`
+
+**Added:** Cycle 4. The search box was previously only covered by a timing test
+(`performance/003_owner-lodges-search-performance.spec.ts`), which never asserted the results were
+actually filtered - only that *a* row rendered within budget. Confirmed live via Playwright MCP
+before automating: searching "QA" against this account's 76 lodges briefly showed **"0 loges"**
+immediately after typing, then settled to "34 loges" a couple seconds later - the same transient
+loading-flash race already documented for the Status filter (1.7), not a real bug, but a gotcha
+this test's polling logic must account for.
+
+**Steps:**
+  1. On `/{locale}/lodges`, read the first row's own lodge name and take a short substring of it as
+    the search term (avoids depending on a specific fixture name that could later be renamed/deleted)
+    - expect: The unfiltered "`N` loges" count is greater than 0 before searching
+  2. Type the derived substring into `Search for loges...`
+    - expect: URL gains `prop_search=<term>`
+    - expect: After polling past the transient "0 loges" flash, the filtered count is greater than 0
+      and less than or equal to the unfiltered count
+  3. Read every visible row's lodge-name heading
+    - expect: Every visible row's name actually contains the search term (case-insensitive) -
+      confirming this is a real name filter, not a cosmetic query-param no-op
+
 ---
 
 ## Reservations

@@ -2,11 +2,24 @@ import { expect, type Page } from '@playwright/test';
 
 export const BASE_URL = new URL(process.env.APP_URL!).origin;
 
+/**
+ * Types into a field with real keystrokes rather than `.fill()`. Confirmed via a WebKit-only
+ * full-suite run (Cycle 4) that `.fill()` sets the DOM value but leaves this app's React
+ * controlled-input state (and therefore the `Continue` button's disabled state) unchanged under
+ * WebKit specifically - Chromium and Firefox don't exhibit this. `pressSequentially()` dispatches
+ * one real keydown/input/keyup triplet per character, which the app's onChange handler picks up
+ * consistently across all three engines.
+ */
+async function typeInto(page: Page, name: string, value: string) {
+  const field = page.getByRole('textbox', { name });
+  await field.pressSequentially(value);
+}
+
 /** Logs in as the main TEST_USER_EMAIL account and waits for the redirect off /auth. */
 export async function login(page: Page) {
   await page.goto(`${BASE_URL}/en/auth`);
-  await page.getByRole('textbox', { name: 'Email' }).fill(process.env.TEST_USER_EMAIL!);
-  await page.getByRole('textbox', { name: 'Password' }).fill(process.env.TEST_USER_PASSWORD!);
+  await typeInto(page, 'Email', process.env.TEST_USER_EMAIL!);
+  await typeInto(page, 'Password', process.env.TEST_USER_PASSWORD!);
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await page.waitForURL((url) => !url.pathname.includes('/auth'));
 }
@@ -14,8 +27,8 @@ export async function login(page: Page) {
 /** Logs in as the dedicated customer test account and lands on the localized home page. */
 export async function loginAsCustomer(page: Page) {
   await page.goto(`${BASE_URL}/en/auth`);
-  await page.getByRole('textbox', { name: 'Email' }).fill(process.env.CUSTOMER_TEST_EMAIL!);
-  await page.getByRole('textbox', { name: 'Password' }).fill(process.env.CUSTOMER_TEST_PASSWORD!);
+  await typeInto(page, 'Email', process.env.CUSTOMER_TEST_EMAIL!);
+  await typeInto(page, 'Password', process.env.CUSTOMER_TEST_PASSWORD!);
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   // A successful login redirects to the localized home page, not straight into /customer/*.
   await page.waitForURL((url) => !url.pathname.includes('/auth'), { timeout: 15000 });
@@ -24,8 +37,8 @@ export async function loginAsCustomer(page: Page) {
 /** Logs in as the Lodge Owner test account and lands on the owner dashboard. */
 export async function loginAsOwner(page: Page) {
   await page.goto(`${BASE_URL}/en/auth`);
-  await page.getByRole('textbox', { name: 'Email' }).fill(process.env.OWNER_TEST_EMAIL!);
-  await page.getByRole('textbox', { name: 'Password' }).fill(process.env.OWNER_TEST_PASSWORD!);
+  await typeInto(page, 'Email', process.env.OWNER_TEST_EMAIL!);
+  await typeInto(page, 'Password', process.env.OWNER_TEST_PASSWORD!);
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   // A successful login redirects to the localized home page, not straight to the dashboard.
   await page.waitForURL((url) => !url.pathname.includes('/auth'), { timeout: 15000 });

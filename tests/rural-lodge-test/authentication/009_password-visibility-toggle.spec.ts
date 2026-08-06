@@ -11,7 +11,11 @@ test.describe('Authentication', () => {
     await page.goto(`${BASE_URL}/en/auth`);
 
     const passwordField = page.getByRole('textbox', { name: 'Password' });
-    await passwordField.fill('Test1234!');
+    // pressSequentially, not fill: under WebKit, .fill()'s value never reaches this React
+    // controlled input's own state, so a later re-render (triggered by the type-toggle click
+    // below) snaps the DOM value back to the stale empty string (confirmed via a full WebKit
+    // run, Cycle 4). Real keystrokes fix it everywhere.
+    await passwordField.pressSequentially('Test1234!');
     await expect(passwordField).toHaveAttribute('type', 'password');
 
     const toggleButton = page.locator('form').getByRole('button').filter({ hasText: /^$/ });

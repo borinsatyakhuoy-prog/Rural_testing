@@ -15,8 +15,10 @@ test.describe('Performance - Login', () => {
     const pageLoadMs = Date.now() - navStart;
     const nav = await getNavigationMetrics(page);
 
-    await page.getByRole('textbox', { name: 'Email' }).fill(process.env.TEST_USER_EMAIL!);
-    await page.getByRole('textbox', { name: 'Password' }).fill(process.env.TEST_USER_PASSWORD!);
+    // pressSequentially, not fill: see the Cycle 4 note in
+    // authentication/001_valid-login-redirects-home.spec.ts.
+    await page.getByRole('textbox', { name: 'Email' }).pressSequentially(process.env.TEST_USER_EMAIL!);
+    await page.getByRole('textbox', { name: 'Password' }).pressSequentially(process.env.TEST_USER_PASSWORD!);
 
     const loginStart = Date.now();
     await page.getByRole('button', { name: 'Continue', exact: true }).click();

@@ -18,10 +18,20 @@ in Step 3b/3c (Lodge Owner CRUD + other owner modules, and the Customer booking 
 | File | Covers | Scenario count |
 |---|---|---|
 | [`01-authentication.md`](./01-authentication.md) | AC1 - login (happy path + negative), Forgot password / OTP reset, password visibility, Sign In/Sign Up tabs, logout, protected-route session behavior | 9 |
-| [`02-navigation.md`](./02-navigation.md) | AC2 - top navigation bar (Stay / Offers / Activity), FR/EN/KH language toggle, locale-in-URL behavior, header consistency | 9 |
+| [`02-navigation.md`](./02-navigation.md) | AC2 - top navigation bar (Stay / Offers / Activity), FR/EN/KH language toggle, locale-in-URL behavior, header consistency, browser Back/Forward history | 13 (was 9; 1.10-1.13 added Cycle 3-4, see file) |
 | [`03-error-handling.md`](./03-error-handling.md) | Cross-cutting "no silent failure" requirement - invalid login message, empty-field feedback, no-data states, and the one real defect found (silent failure on a protected route) | 4 |
-| [`04-lodge-owner.md`](./04-lodge-owner.md) | Lodge Owner role - Create/List/Edit/Delete lodge CRUD, Reservations, Payout (view-only), Stay Management, Notifications, Profile/Account Settings | 6 |
-| [`05-customer-booking.md`](./05-customer-booking.md) | Customer role - browsing lodges, lodge detail view, booking flow up to (never including) payment, date/guest validation, Wishlist, customer dashboard/profile | 7 |
+| [`04-lodge-owner.md`](./04-lodge-owner.md) | Lodge Owner role - Create/List/Edit/Delete lodge CRUD (incl. Status/Search filters), Reservations, Payout (view-only), Stay Management, Notifications, Profile/Account Settings | 6 sections (CRUD subsection now 1.1-1.8, see file) |
+| [`05-customer-booking.md`](./05-customer-booking.md) | Customer role - browsing lodges, lodge detail view, booking flow up to (never including) payment, date/guest validation, Wishlist, customer dashboard/profile, Explore Lodge CTA behavior | 8 (was 7; 1.8 added Cycle 4, see file) |
+
+**Cycle 4 (2026-08-06) additions**, via fresh live exploration - not in the original Step 2 plan:
+- Navigation 1.13: the browser's own Back/Forward buttons correctly unwind client-side navigation
+  history (closes a gap versus `user-stories/SCRUM.md`'s Technical Notes, which explicitly calls for
+  "back button behavior" testing that no prior script exercised).
+- Lodge Owner 1.8: the Owner Lodges list's search box actually filters by name server-side (not
+  just a timing check, which is all the existing performance test covered).
+- Customer Booking 1.8: a new finding - all 3 "Explore Lodge" CTAs in the customer dashboard open a
+  new browser tab, unlike every other in-shell link. Documented as current behavior for a product
+  decision, not asserted as a hard failure.
 
 Each scenario in every file has: a clear title, numbered step-by-step **perform** actions, an
 **expect** list of observable results per step, and the test data it needs (env-driven credentials,

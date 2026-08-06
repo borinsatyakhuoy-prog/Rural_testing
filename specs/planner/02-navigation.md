@@ -94,9 +94,56 @@ Covers AC2 (Navigation): the top navigation bar (Stay / Offers / Activity) and t
 
 #### 1.9. Header utility icons (language, currency, account, Manage Your Lodge) render consistently across every top-nav section
 
-**File:** `tests/rural-lodge-test/navigation/header-consistency.spec.ts`
+**File:** `tests/rural-lodge-test/navigation/009_header-consistency-across-sections.spec.ts`
 
 **Steps:**
   1. Visit Stay ('/en'), Offers ('/en/offers'), and Activity ('/en/activity') in turn
     - expect: On every page the header consistently shows: the logo link, the Stay/Offers/Activity nav links, a 'Manage Your Lodge' button, the language toggle icon, a currency '$' button, and the login/account icon
     - expect: No section is missing any of these header elements
+
+#### 1.10. Language toggle is present logged out (regression lock-in for the toggle's own visibility)
+
+**File:** `tests/rural-lodge-test/navigation/010_language-toggle-present-logged-out.spec.ts`
+
+**Added:** Cycle 3, retroactively documented Cycle 4 (script pre-dated this entry).
+
+**Steps:**
+  1. Navigate to `/en/auth` with no session
+    - expect: The header's 'EN' language toggle button is visible within a generous 15s timeout (this button's accessible name lags slightly behind first paint, per `specs/exploratory-findings.md`)
+
+#### 1.11. Language toggle is present logged in
+
+**File:** `tests/rural-lodge-test/navigation/011_language-toggle-present-logged-in.spec.ts`
+
+**Added:** Cycle 3, retroactively documented Cycle 4 (script pre-dated this entry).
+
+**Steps:**
+  1. Log in with `TEST_USER_EMAIL` and land on `/en`
+    - expect: The header's 'EN' language toggle button (scoped to the `banner` landmark) is still visible after authentication - the toggle isn't a logged-out-only affordance
+
+#### 1.12. Offers page "Coming Soon" copy bug (documented, asserted as current behavior)
+
+**File:** `tests/rural-lodge-test/navigation/012_offers-page-copy-bug.spec.ts`
+
+**Added:** Cycle 3, retroactively documented Cycle 4 (script pre-dated this entry).
+
+**Steps:**
+  1. Navigate to `/en/offers`
+    - expect: A 'Coming Soon' heading is visible
+    - expect: The body text reads "We are working hard to bring you exciting activities. Stay tuned!" - copy-pasted verbatim from the Activity page and contextually wrong for Offers (see §New findings in `exploratory-findings.md`). Intentionally asserted as-is so a future copy fix changes this test's result rather than going unnoticed.
+
+#### 1.13. Browser Back button unwinds in-app navigation history correctly (new, Cycle 4)
+
+**File:** `tests/rural-lodge-test/navigation/013_browser-back-button-preserves-history.spec.ts`
+
+**Added:** Cycle 4 - closes a real gap versus `user-stories/SCRUM.md`'s Technical Notes ("Test navigation flow and back button behavior"), which no prior script exercised (only in-app link clicks had been covered).
+
+**Steps:**
+  1. From `/en`, click 'Offers', then click 'Activity'
+    - expect: URL becomes `/en/offers`, then `/en/activity`, in turn
+  2. Press the browser's Back button twice
+    - expect: First Back returns to `/en/offers` (with the 'Coming Soon' heading visible); second Back returns to `/en` (with the 'Where do you want to go next?' hero visible) - confirming the client-side router's history entries mirror real navigation rather than collapsing/skipping steps
+  3. Press Forward once
+    - expect: URL returns to `/en/offers`, confirming Back didn't destroy the forward-history entry
+
+Confirmed live via Playwright MCP before automating: this passed cleanly on first exploration - not a defect, a regression lock-in for real browser-history behavior (which client-side routers can get wrong silently).
